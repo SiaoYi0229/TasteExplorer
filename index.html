@@ -148,7 +148,7 @@
             if (usage.remaining <= 0) return { error: "LIMIT_REACHED", message: "此 API Key 今日配額已用完！" };
 
             // 使用 v1beta 端點以支援 Google Search Grounding 聯網搜尋功能
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${userApiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
             
             let timeNote = filters.includes("營業中") ? `現在是 ${userTime}。` : "";
             let transNote = mrtStation ? `要求：必須位於「${mrtStation}」站步行 500 公尺內。` : "";
