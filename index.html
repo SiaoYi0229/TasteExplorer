@@ -72,7 +72,7 @@
         .close-swiper { position: fixed; bottom: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 30px; border-radius: 50px; cursor: pointer; z-index: 120; font-weight: bold; backdrop-filter: blur(10px); }
         #round-info { background: rgba(255, 102, 0, 0.2); border: 1px solid var(--primary-orange); padding: 8px 20px; border-radius: 50px; margin-top: 30px; margin-bottom: 10px; font-weight: bold; z-index: 110; pointer-events: none; }
         
-        .swipe-hints { position: absolute; top: 12px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; z-index: 5; }
+        .swipe-hints { position: absolute; top: 12px; left: 0; width: 100%; display: space-between; padding: 0 15px; pointer-events: none; z-index: 5; display: flex; }
         .hint-item { font-size: 0.65rem; font-weight: bold; color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
     </style>
 </head>
@@ -109,7 +109,7 @@
         </div>
         <div class="footer-action"><button id="search-btn" class="cta-button" onclick="handleSearchClick()">開始探索美食</button><div id="usage-text" class="usage-hint">今日剩餘次數：-- 次</div></div>
     </div>
-    <div id="loader"><div class="spinner"></div><p style="color: white; margin-top: 10px; font-weight: bold;">正在連網搜尋真實地標...</p></div>
+    <div id="loader"><div class="spinner"></div><p style="color: white; margin-top: 10px; font-weight: bold;">正在連網搜尋真實座標...</p></div>
     <div id="swiper-overlay"><div id="round-info"></div><div class="card-stack" id="card-stack"></div><button class="close-swiper" onclick="resetUI()">← 返回調整</button></div>
 
     <script>
@@ -123,7 +123,7 @@
         const hsrMap = { 'Taipei': { '中正區': ['高鐵台北站'], '南港區': ['高鐵南港站'] }, 'NewTaipei': { '板橋區': ['高鐵板橋站'] }, 'Taoyuan': { '中壢區': ['高鐵桃園站'] }, 'HsinchuCounty': { '竹北市': ['高鐵新竹站'] }, 'Miaoli': { '後龍鎮': ['高鐵苗栗站'] }, 'Taichung': { '烏日區': ['高鐵台中站'] }, 'Changhua': { '田中鎮': ['高鐵彰化站'] }, 'Yunlin': { '虎尾鎮': ['高鐵雲林站'] }, 'ChiayiCounty': { '太保市': ['高鐵嘉義站'] }, 'Tainan': { '歸仁區': ['高鐵台南站'] }, 'Kaohsiung': { '左營區': ['高鐵左營站'] } };
         const trainMap = { 'Keelung': { '仁愛區': ['基隆'], '暖暖區': ['八堵'], '七堵區': ['七堵'] }, 'Taipei': { '中正區': ['台北'], '萬華區': ['萬華'], '松山區': ['松山'], '南港區': ['南港'] }, 'NewTaipei': { '板橋區': ['板橋'], '汐止區': ['汐止', '汐科'], '樹林區': ['樹林'], '鶯歌區': ['鶯歌'], '瑞芳區': ['瑞芳'] }, 'Taoyuan': { '桃園區': ['桃園'], '中壢區': ['中壢'] }, 'Taichung': { '中區': ['台中'], '烏日區': ['新烏日'] }, 'Tainan': { '東區': ['台南'] }, 'Kaohsiung': { '左營區': ['新左營'], '三民區': ['高雄'] } };
 
-        /* --- 2. 邏輯校準：100% 回歸您的 gemini-2.5-flash 與真實連網核對 --- */
+        /* --- 2. 邏輯校準：使用 google_search 工具確保店家真實存在 --- */
         function getUsageInfo(userApiKey) {
             if (!userApiKey) return { remaining: 0, limit: DAILY_LIMIT };
             const today = new Date().toLocaleDateString("zh-TW");
@@ -144,19 +144,19 @@
             const usage = getUsageInfo(userApiKey);
             if (usage.remaining <= 0) return { error: "LIMIT_REACHED", message: "此 API Key 今日配額已用完！" };
 
-            // 使用 v1beta 端點以開啟連網搜尋 (Grounding) 功能，同時使用您指定的 2.5-flash
+            // 使用 v1beta 接口與 google_search 工具
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
             
             let timeNote = filters.includes("營業中") ? `現在是 ${userTime}。` : "";
-            let transNote = mrtStation ? `要求：地點必須位於「${mrtStation}」站步行 500 公尺內。` : "";
+            let transNote = mrtStation ? `要求：必須位於「${mrtStation}」站步行 500 公尺內。` : "";
 
             const prompt = `你是一位美食地圖調查員。
                 任務：找出 ${city}${district} ${mrtStation ? '且鄰近'+mrtStation+'站' : ''} 的實體餐廳。
 
                 【嚴格執行流程】：
-                1. 首先使用「Google 搜尋功能」檢索該區域目前「正常營業中」的餐廳資料。
-                2. 排除所有標註「已歇業」或「永久停業」的店家。
-                3. 必須確保回傳的地址 (address) 是 Google 地圖上該店目前的正確位置。
+                1. 必須先使用「Google 搜尋功能」檢索該區域目前的餐廳。
+                2. 排除所有在搜尋結果中顯示「已歇業」或「永久停業」的店家。
+                3. 必須回傳該店在 Google 地圖上目前的真實地址 (address)。
                 4. 禁止隨便拿同區但距離指定的 ${mrtStation} 遙遠的店家充數。
 
                 篩選條件：
@@ -172,7 +172,8 @@
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        tools: [{ google_search_retrieval: {} }]
+                        // --- 修正工具名稱為 google_search ---
+                        tools: [{ google_search: {} }]
                     })
                 });
                 
@@ -190,7 +191,7 @@
             } catch (e) { return { error: "AI 搜尋超時或資料解析錯誤，請重試。" }; }
         }
 
-        /* --- 3. UI 邏輯：100% 補回交通支援檢查限制 --- */
+        /* --- 3. UI 控制邏輯 100% 保留 --- */
         const bg = document.getElementById('bg-container'); images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i===0?' active':''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(div); });
         let slideIdx = 0; setInterval(() => { const s = document.querySelectorAll('.bg-slide'); s[slideIdx].classList.remove('active'); slideIdx = (slideIdx+1)%s.length; s[slideIdx].classList.add('active'); }, 6000);
 
@@ -273,10 +274,8 @@
             restaurants.forEach((res) => {
                 const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
                 const card = document.createElement('div'); card.className = 'swipe-card';
-                
-                // 地圖連結強化邏輯：地址 + 店名 = 唯一精準座標
+                // 地圖連結強化：地址 + 店名 = 唯一精準座標
                 const searchQuery = encodeURIComponent(`${res.address} ${res.name}`);
-                
                 card.innerHTML = `<div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div><div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-price">💰 ${res.price}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div><div class="card-summary">"${res.review_summary}"</div><div class="info-row" style="opacity:0.6; font-size:0.75rem;">📍 ${res.address}</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${searchQuery}" target="_blank">🗺️ Google 地圖確認</a>`;
                 wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length === 1);
             });
