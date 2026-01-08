@@ -152,26 +152,29 @@
             const usage = getUsageInfo(userApiKey);
             if (usage.remaining <= 0) return { error: "LIMIT_REACHED", message: "此 API Key 今日配額已用完！" };
 
-            // 【模型校準：使用您在 GAS 穩定運行的 gemini-2.5-flash】
             const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
             
-            let timeNote = filters.includes("營業中") ? `【嚴格要求：現在是 ${userTime}。目前打烊中絕對禁止推薦。】` : "";
-            let hiddenNote = filters.includes("隱藏版") ? `【隱藏版要求：嚴格避開 Google 評論數過高（如 >2000 則）的名店，優先尋找巷弄私房店。】` : "";
-            let transNote = mrtStation ? `【絕對交通要求：地點必須位於「${mrtStation}」站步行 500 公尺內（5-10分鐘路程）。你必須仔細檢索地圖資料，確保地址正確且鄰近該站。即使該站在行政區邊界，也應以鄰近該站為最優先條件。】` : "";
+            // 強化版 Prompt：加入「真實性驗證」與「歇業判斷」邏輯
+            const prompt = `你是一位專業的台灣在地美食評論家與地圖專家。
+                請根據以下條件，精選 5 間【真實存在、且目前仍在營運中】的餐廳：
+                
+                【搜尋條件】
+                1. 地點：${city}${district} ${mrtStation ? '(必須鄰近 '+mrtStation+' 站)' : ''}
+                2. 種類：${food}
+                3. 目的：${purpose} (請確保氛圍符合)
+                4. 預算與人數：${budget}, ${people}
+                5. 當前時間：${userTime}
+                6. 額外要求：${filters}
 
-            const prompt = `你是一位台灣美食專家。${timeNote} ${hiddenNote} ${transNote}
-                請根據以下條件推薦真實存在的餐廳：
-                地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}
-                種類：${food}
-                目的：${purpose}
-                預算等級：${budget}
-                特殊篩選：${filters}
-                【行為準則：寧缺勿濫，但站點鄰近性為最高優先】
-                1. 數量要求：盡可能提供 5 間，若完全不符才減少。
-                2. 請確保地址 (address) 欄位資訊真實且鄰近指定的交通站。
-                3. 絕不回傳不符合交通距離要求的店家。
-                請只回傳一個 JSON 陣列。
-                JSON 格式：[{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "address":"" }]`;
+                【嚴格執行指令 - 確保資料正確性】
+                - 歇業檢查：排除所有已永久停業、暫停營業或查無此店的資料。
+                - 地址核實：必須提供該店最準確的完整地址（含路名與門牌）。
+                - 交通匹配：若有指定車站，店家必須位於該站步行 800 公尺內。
+                - 營業時間判斷：若篩選條件含「營業中」，請對照 ${userTime} 與該店實際營業時間，不符合者絕對禁止出現。
+                - 內容獨特性：name, rating, price, signature, review_summary 必須完全對應該店家，禁止張冠李戴。
+
+                請僅回傳一個 JSON 陣列，格式如下：
+                [{ "name":"店名", "rating":"4.5", "hours":"今日營業至 22:00", "price":"$500-800", "signature":"必點招牌菜名", "review_summary":"一句話總結Google評論特色", "reason":"推薦原因(需提到為何符合目的)", "address":"完整正確地址" }]`;
 
             try {
                 const response = await fetch(url, {
@@ -181,20 +184,25 @@
                 });
                 
                 const result = await response.json();
-                
                 if (result.error) return { error: result.error.message };
                 
                 let text = result.candidates[0].content.parts[0].text;
                 text = text.replace(/```json/gi, "").replace(/```/gi, "").trim();
+                
+                // 解析資料並進行二次校驗（確保欄位完整）
                 const parsedData = JSON.parse(text);
                 
+                // 扣除次數邏輯
                 const keyId = "KEY_" + userApiKey.slice(-10);
                 const newCount = (DAILY_LIMIT - usage.remaining) + 1;
                 localStorage.setItem(`COUNT_${keyId}`, newCount.toString());
+                
                 return { data: parsedData, newRemaining: DAILY_LIMIT - newCount };
-            } catch (e) { return { error: "AI 忙碌中，請稍後再試。" }; }
+            } catch (e) { 
+                console.error("AI 錯誤:", e);
+                return { error: "無法取得精確推薦，可能是 API Key 錯誤或 AI 模型暫時忙碌。" }; 
+            }
         }
-
         /* --- 3. UI 控制邏輯 --- */
         const bg = document.getElementById('bg-container'); 
         images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i===0?' active':''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(div); });
