@@ -152,26 +152,27 @@
             const usage = getUsageInfo(userApiKey);
             if (usage.remaining <= 0) return { error: "LIMIT_REACHED", message: "此 API Key 今日配額已用完！" };
 
-            // 絕對鎖定 gemini-2.5-flash，不改動模型版本
+            // ⚠️ 絕對鎖定：使用您指定的 gemini-2.5-flash
             const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
             
-            const prompt = `你是一位精通台灣在地美食的專家，現在時間是 ${userTime}。
-                請為用戶精選 5 間在 Google 地圖上【真實存在、高評價且仍在營業】的餐廳。
+            // 強化 Prompt：要求 AI 務必查核真實地址與營業狀態
+            const prompt = `你是一位專業的台灣美食嚮導，現在時間是 ${userTime}。
+                請精選 5 間在 Google 地圖上【真實存在、高評價且仍在營業】的餐廳。
                 
                 【搜尋條件】
                 - 地點：${city}${district} ${mrtStation ? '(必須鄰近 '+mrtStation+' 站)' : ''}
                 - 種類：${food} | 目的：${purpose} | 預算：${budget}
                 - 特殊篩選：${filters}
 
-                【資料準確性嚴格要求】
-                1. 排除歇業：嚴格禁止推薦已倒閉、暫停營業或遷移的店家。
+                【資料正確性嚴格要求】
+                1. 排除歇業：嚴禁推薦任何已倒閉、永久停業或查無此店的資料。
                 2. 真實地址：地址必須為該店正確的完整門牌，且必須確實位於 ${city}${district}。
-                3. 營業狀態校驗：若篩選包含「營業中」，請確認該店在 ${userTime} 確實有開門。
-                4. 地圖優化：請額外生成一個 "map_query" 欄位，格式為「店名 + 縣市行政區」，這是為了確保 Google Map 能 100% 找到店。
-                5. 禁止幻覺：嚴禁將 A 店的地址配給 B 店。如果符合條件的真實店家不足 5 間，請僅列出真實存在的。
+                3. 營業校驗：若篩選含「營業中」，請對照 ${userTime} 確認該店當下有開門。
+                4. 連結優化：請額外生成一個 "search_name" 欄位，格式為「店名 + 行政區」，確保 Google Map 能 100% 定位成功。
+                5. 禁止幻覺：嚴禁虛構餐廳名或隨意組合地址。若符合條件的真實店家不足 5 間，請僅提供真實存在的。
 
-                請僅回傳一個 JSON 陣列：
-                [{ "name":"店名", "rating":"評分", "hours":"今日營業時段", "price":"價位範圍", "signature":"招牌必點", "review_summary":"一句話總結Google評論", "address":"正確地址", "map_query":"搜尋關鍵字" }]`;
+                請僅回傳 JSON 陣列：
+                [{ "name":"店名", "rating":"評分", "hours":"今日營業時段", "price":"價位", "signature":"招牌菜", "review_summary":"評論特色", "address":"完整地址", "search_name":"搜尋關鍵字" }]`;
 
             try {
                 const response = await fetch(url, {
@@ -279,9 +280,9 @@
                 const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
                 const card = document.createElement('div'); card.className = 'swipe-card';
                 
-                // 核心修正：使用 map_query (店名+區域) 進行搜尋，這比單純搜尋地址更能抵抗 AI 的小誤差
-                const searchQuery = res.map_query || `${res.name} ${res.address}`;
-                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+                // 核心邏輯：結合「店名」與「地址」搜尋，Google 地圖會自動校正 AI 的門牌微小誤差
+                const mapQuery = `${res.name} ${res.address}`;
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`;
 
                 card.innerHTML = `
                     <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div>
