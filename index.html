@@ -152,28 +152,26 @@
             const usage = getUsageInfo(userApiKey);
             if (usage.remaining <= 0) return { error: "LIMIT_REACHED", message: "此 API Key 今日配額已用完！" };
 
-            // 注意：目前官方最新穩定版為 gemini-1.5-flash，若您的環境支援 2.5 可自行保留
+            // 絕對鎖定 gemini-2.5-flash，不改動模型版本
             const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
             
-            const prompt = `你是一位專業的台灣美食嚮導。請為用戶推薦 5 間在 Google 地圖上【真實存在且極具名氣】的餐廳。
+            const prompt = `你是一位精通台灣在地美食的專家，現在時間是 ${userTime}。
+                請為用戶精選 5 間在 Google 地圖上【真實存在、高評價且仍在營業】的餐廳。
                 
                 【搜尋條件】
-                - 地點：${city}${district} ${mrtStation ? '(必須在 '+mrtStation+' 站步行距離內)' : ''}
-                - 種類：${food}
-                - 目的：${purpose}
-                - 預算：${budget}
-                - 當前時間：${userTime}
-                - 額外要求：${filters}
+                - 地點：${city}${district} ${mrtStation ? '(必須鄰近 '+mrtStation+' 站)' : ''}
+                - 種類：${food} | 目的：${purpose} | 預算：${budget}
+                - 特殊篩選：${filters}
 
-                【嚴格準則 - 避免幻覺】
-                1. 必須真實：禁止虛構餐廳。如果該區符合條件的店不足5間，請僅提供真實存在的，寧缺勿濫。
-                2. 地址一致性：提供的 "address" 必須確實位於 ${city}${district} 內。
-                3. 搜尋關鍵字：請額外提供一個 "map_query" 欄位，內容為「店名 + 縣市 + 路名」，確保用戶點擊後能精確定位。
-                4. 排除歇業：請排除已永久停業或搬遷的知名老店。
-                5. 營業狀態：若用戶要求「營業中」，請務必檢查該店在 ${userTime} 是否有開門。
+                【資料準確性嚴格要求】
+                1. 排除歇業：嚴格禁止推薦已倒閉、暫停營業或遷移的店家。
+                2. 真實地址：地址必須為該店正確的完整門牌，且必須確實位於 ${city}${district}。
+                3. 營業狀態校驗：若篩選包含「營業中」，請確認該店在 ${userTime} 確實有開門。
+                4. 地圖優化：請額外生成一個 "map_query" 欄位，格式為「店名 + 縣市行政區」，這是為了確保 Google Map 能 100% 找到店。
+                5. 禁止幻覺：嚴禁將 A 店的地址配給 B 店。如果符合條件的真實店家不足 5 間，請僅列出真實存在的。
 
-                請回傳 JSON 陣列：
-                [{ "name":"店名", "rating":"評分", "hours":"營業狀態", "price":"價位", "signature":"招牌菜", "review_summary":"評論摘要", "address":"完整地址", "map_query":"精確搜尋字" }]`;
+                請僅回傳一個 JSON 陣列：
+                [{ "name":"店名", "rating":"評分", "hours":"今日營業時段", "price":"價位範圍", "signature":"招牌必點", "review_summary":"一句話總結Google評論", "address":"正確地址", "map_query":"搜尋關鍵字" }]`;
 
             try {
                 const response = await fetch(url, {
@@ -193,8 +191,7 @@
                 const newCount = (DAILY_LIMIT - usage.remaining) + 1;
                 localStorage.setItem(`COUNT_${keyId}`, newCount.toString());
                 return { data: parsedData, newRemaining: DAILY_LIMIT - newCount };
-            } catch (e) { return { error: "連線不穩定，請重新探索。" }; }
-    
+            } catch (e) { return { error: "AI 穿梭巷弄中出了一點意外，請稍後再試。" }; }
         }
         /* --- 3. UI 控制邏輯 --- */
         const bg = document.getElementById('bg-container'); 
@@ -282,8 +279,7 @@
                 const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
                 const card = document.createElement('div'); card.className = 'swipe-card';
                 
-                // 這裡的關鍵在於：使用 AI 產生的 map_query 或者「店名+地址」的組合
-                // 這樣 Google Maps 會啟動模糊搜尋校正，比單純搜地址準確得多
+                // 核心修正：使用 map_query (店名+區域) 進行搜尋，這比單純搜尋地址更能抵抗 AI 的小誤差
                 const searchQuery = res.map_query || `${res.name} ${res.address}`;
                 const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
 
@@ -307,7 +303,6 @@
                 initSwipe(card, wrapper, res, restaurants.length === 1);
             });
             stack.scrollTo(0, 0); 
-    
         }
 
         function initSwipe(el, wrapper, resData, isLastOne) {
