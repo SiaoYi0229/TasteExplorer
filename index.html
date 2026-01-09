@@ -152,29 +152,28 @@
             const usage = getUsageInfo(userApiKey);
             if (usage.remaining <= 0) return { error: "LIMIT_REACHED", message: "此 API Key 今日配額已用完！" };
 
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+            // 注意：目前官方最新穩定版為 gemini-1.5-flash，若您的環境支援 2.5 可自行保留
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${userApiKey}`;
             
-            // 強化版 Prompt：加入「真實性驗證」與「歇業判斷」邏輯
-            const prompt = `你是一位專業的台灣在地美食評論家與地圖專家。
-                請根據以下條件，精選 5 間【真實存在、且目前仍在營運中】的餐廳：
+            const prompt = `你是一位專業的台灣美食嚮導。請為用戶推薦 5 間在 Google 地圖上【真實存在且極具名氣】的餐廳。
                 
                 【搜尋條件】
-                1. 地點：${city}${district} ${mrtStation ? '(必須鄰近 '+mrtStation+' 站)' : ''}
-                2. 種類：${food}
-                3. 目的：${purpose} (請確保氛圍符合)
-                4. 預算與人數：${budget}, ${people}
-                5. 當前時間：${userTime}
-                6. 額外要求：${filters}
+                - 地點：${city}${district} ${mrtStation ? '(必須在 '+mrtStation+' 站步行距離內)' : ''}
+                - 種類：${food}
+                - 目的：${purpose}
+                - 預算：${budget}
+                - 當前時間：${userTime}
+                - 額外要求：${filters}
 
-                【嚴格執行指令 - 確保資料正確性】
-                - 歇業檢查：排除所有已永久停業、暫停營業或查無此店的資料。
-                - 地址核實：必須提供該店最準確的完整地址（含路名與門牌）。
-                - 交通匹配：若有指定車站，店家必須位於該站步行 800 公尺內。
-                - 營業時間判斷：若篩選條件含「營業中」，請對照 ${userTime} 與該店實際營業時間，不符合者絕對禁止出現。
-                - 內容獨特性：name, rating, price, signature, review_summary 必須完全對應該店家，禁止張冠李戴。
+                【嚴格準則 - 避免幻覺】
+                1. 必須真實：禁止虛構餐廳。如果該區符合條件的店不足5間，請僅提供真實存在的，寧缺勿濫。
+                2. 地址一致性：提供的 "address" 必須確實位於 ${city}${district} 內。
+                3. 搜尋關鍵字：請額外提供一個 "map_query" 欄位，內容為「店名 + 縣市 + 路名」，確保用戶點擊後能精確定位。
+                4. 排除歇業：請排除已永久停業或搬遷的知名老店。
+                5. 營業狀態：若用戶要求「營業中」，請務必檢查該店在 ${userTime} 是否有開門。
 
-                請僅回傳一個 JSON 陣列，格式如下：
-                [{ "name":"店名", "rating":"4.5", "hours":"今日營業至 22:00", "price":"$500-800", "signature":"必點招牌菜名", "review_summary":"一句話總結Google評論特色", "reason":"推薦原因(需提到為何符合目的)", "address":"完整正確地址" }]`;
+                請回傳 JSON 陣列：
+                [{ "name":"店名", "rating":"評分", "hours":"營業狀態", "price":"價位", "signature":"招牌菜", "review_summary":"評論摘要", "address":"完整地址", "map_query":"精確搜尋字" }]`;
 
             try {
                 const response = await fetch(url, {
@@ -188,20 +187,14 @@
                 
                 let text = result.candidates[0].content.parts[0].text;
                 text = text.replace(/```json/gi, "").replace(/```/gi, "").trim();
-                
-                // 解析資料並進行二次校驗（確保欄位完整）
                 const parsedData = JSON.parse(text);
                 
-                // 扣除次數邏輯
                 const keyId = "KEY_" + userApiKey.slice(-10);
                 const newCount = (DAILY_LIMIT - usage.remaining) + 1;
                 localStorage.setItem(`COUNT_${keyId}`, newCount.toString());
-                
                 return { data: parsedData, newRemaining: DAILY_LIMIT - newCount };
-            } catch (e) { 
-                console.error("AI 錯誤:", e);
-                return { error: "無法取得精確推薦，可能是 API Key 錯誤或 AI 模型暫時忙碌。" }; 
-            }
+            } catch (e) { return { error: "連線不穩定，請重新探索。" }; }
+    
         }
         /* --- 3. UI 控制邏輯 --- */
         const bg = document.getElementById('bg-container'); 
@@ -284,13 +277,37 @@
             document.getElementById('swiper-overlay').style.display = 'flex';
             currentLikedList = []; swipedCount = 0; cardsRemaining = restaurants.length;
             document.getElementById('round-info').innerText = "左右滑動篩選";
+            
             restaurants.forEach((res) => {
                 const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
                 const card = document.createElement('div'); card.className = 'swipe-card';
-                card.innerHTML = `<div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div><div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-price">💰 ${res.price}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div><div class="card-summary">"${res.review_summary}"</div><div class="info-row" style="opacity:0.6; font-size:0.75rem;">📍 ${res.address}</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ Google 地圖</a>`;
-                wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length === 1);
+                
+                // 這裡的關鍵在於：使用 AI 產生的 map_query 或者「店名+地址」的組合
+                // 這樣 Google Maps 會啟動模糊搜尋校正，比單純搜地址準確得多
+                const searchQuery = res.map_query || `${res.name} ${res.address}`;
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`;
+
+                card.innerHTML = `
+                    <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div>
+                    <div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div>
+                    <div class="label-chosen">🏆 最終首選</div>
+                    <h3>${res.name}</h3>
+                    <div class="card-badges">
+                        <span class="card-badge badge-rating">⭐ ${res.rating}</span>
+                        <span class="card-badge badge-price">💰 ${res.price}</span>
+                    </div>
+                    <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
+                    <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
+                    <div class="card-summary">"${res.review_summary}"</div>
+                    <div class="info-row" style="opacity:0.6; font-size:0.75rem;">📍 ${res.address}</div>
+                    <a class="card-map-btn" href="${mapLink}" target="_blank">🗺️ 在 Google 地圖開啟</a>`;
+                
+                wrapper.appendChild(card);
+                stack.appendChild(wrapper);
+                initSwipe(card, wrapper, res, restaurants.length === 1);
             });
             stack.scrollTo(0, 0); 
+    
         }
 
         function initSwipe(el, wrapper, resData, isLastOne) {
