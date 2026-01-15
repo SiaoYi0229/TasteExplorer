@@ -2,9 +2,8 @@
 <html lang="zh-TW">
 <head>
     <!-- 網頁標籤圖示 -->
-<link rel="icon" href="favicon.png" type="image/png">
-<!-- 手機加入主畫面時的圖示 (iOS) -->
-<link rel="apple-touch-icon" href="favicon.png">
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TasteExplorer - 美食探索</title>
@@ -27,11 +26,9 @@
         .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
         .bg-slide.active { opacity: 0.6; }
         
-        /* 外掛座標與距離樣式 */
         .location-status { font-size: 0.75rem; color: var(--accent-yellow); background: rgba(0,0,0,0.3); padding: 4px 12px; border-radius: 20px; margin-top: 8px; display: flex; align-items: center; gap: 5px; border: 1px solid rgba(255, 204, 0, 0.3); }
         .location-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
-        .badge-distance { background: rgba(255,255,255,0.2); color: #fff; }
 
         #api-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
         .api-card { width: 100%; max-width: 340px; background: rgba(20, 20, 20, 0.8); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
@@ -63,7 +60,7 @@
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top-color: var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
-        .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+        .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
         .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; touch-action: pan-y; position: relative; }
         .swipe-card { width: 100%; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border); padding: 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
         .swipe-label { position: absolute; top: 30px; padding: 5px 15px; border: 4px solid; border-radius: 10px; font-size: 2rem; font-weight: 900; text-transform: uppercase; opacity: 0; pointer-events: none; z-index: 10; }
@@ -76,26 +73,26 @@
         .card-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
         .badge-rating { background: var(--accent-yellow); color: #000; }
         .badge-price { background: rgba(255,255,255,0.1); color: #eee; }
+        .badge-distance { background: rgba(255,255,255,0.2); color: #fff; }
         .info-row { font-size: 0.85rem; display: flex; gap: 6px; color: #ddd; line-height: 1.4; }
         .info-label { color: var(--primary-orange); font-weight: bold; flex-shrink: 0; }
         .card-summary { font-size: 0.88rem; font-style: italic; opacity: 0.85; border-left: 2px solid var(--primary-orange); padding-left: 10px; margin: 5px 0; line-height: 1.4; }
         .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; font-size: 0.95rem; }
         .close-swiper { position: fixed; bottom: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 30px; border-radius: 50px; cursor: pointer; z-index: 120; font-weight: bold; backdrop-filter: blur(10px); }
         #round-info { background: rgba(255, 102, 0, 0.2); border: 1px solid var(--primary-orange); padding: 8px 20px; border-radius: 50px; margin-top: 30px; margin-bottom: 10px; font-weight: bold; z-index: 110; pointer-events: none; }
+        .swipe-hints { position: absolute; top: 12px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; z-index: 5; }
+        .hint-item { font-size: 0.65rem; font-weight: bold; color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
     </style>
 </head>
 <body touch-action="none">
-    <div id="api-overlay"><div class="api-card"><h2>🔑 API 設定</h2><p>請輸入您的 Gemini API Key。<br>設定後享有獨立的每日 15 次配額。</p><input type="password" id="api-key-input" class="api-input" placeholder="貼上您的 API Key (AIza...)"><button class="api-save-btn" onclick="saveApiKey()">確認並儲存</button><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent-yellow); font-size:0.85rem; display:block; margin-top:15px;">👉 點此申請您的 API Key</a><button onclick="document.getElementById('api-overlay').style.display='none'" style="background:none; border:none; color:#777; margin-top:20px;">返回首頁</button></div></div>
+    <div id="api-overlay"><div class="api-card"><h2>🔑 API 設定</h2><p>設定後享有獨立的每日 15 次配額。</p><input type="password" id="api-key-input" class="api-input" placeholder="貼上您的 API Key"><button class="api-save-btn" onclick="saveApiKey()">確認並儲存</button><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent-yellow); font-size:0.85rem; display:block; margin-top:15px;">👉 點此申請您的 API Key</a><button onclick="document.getElementById('api-overlay').style.display='none'" style="background:none; border:none; color:#777; margin-top:20px;">返回首頁</button></div></div>
     <div id="bg-container"></div>
     <div class="container" id="main-ui">
         <div class="header">
             <div class="logo">TasteExplorer</div>
             <div class="settings-btn" onclick="document.getElementById('api-overlay').style.display='flex'">⚙️</div>
             <div class="tagline">探索隱藏美味 享受極致饗宴</div>
-            <div id="location-display" class="location-status">
-                <div class="location-dot"></div>
-                <span id="coords-text">正在同步 GPS...</span>
-            </div>
+            <div id="location-display" class="location-status"><div class="location-dot"></div><span id="coords-text">同步 GPS...</span></div>
         </div>
         <div class="glass-card">
             <div class="form-grid">
@@ -129,36 +126,28 @@
     <div id="swiper-overlay"><div id="round-info"></div><div class="card-stack" id="card-stack"></div><button class="close-swiper" onclick="resetUI()">← 返回調整</button></div>
 
 <script>
-    /* --- 1. 背景 6 張與座標系統 (優先啟動) --- */
+    /* --- 1. 背景 6 張與座標同步 --- */
     const images = ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1', 'https://images.unsplash.com/photo-1594046243098-0fceea9d451e', 'https://images.unsplash.com/photo-1563245372-f21724e3856d', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836', 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38'];
-    const bgContainer = document.getElementById('bg-container');
-    images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i === 0 ? ' active' : ''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bgContainer.appendChild(div); });
-    let slideIdx = 0; setInterval(() => { const slides = document.querySelectorAll('.bg-slide'); if(slides.length){ slides[slideIdx].classList.remove('active'); slideIdx = (slideIdx + 1) % slides.length; slides[slideIdx].classList.add('active'); } }, 6000);
+    const bg = document.getElementById('bg-container'); images.forEach((url, i) => { const d = document.createElement('div'); d.className = 'bg-slide'+(i===0?' active':''); d.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(d); });
+    let slideIdx = 0; setInterval(() => { const s = document.querySelectorAll('.bg-slide'); s[slideIdx].classList.remove('active'); slideIdx = (slideIdx+1)%s.length; s[slideIdx].classList.add('active'); }, 6000);
 
     let userCoords = { lat: null, lng: null };
-    const DAILY_LIMIT = 15;
     function calculateDistance(lat1, lon1, lat2, lon2) {
         if (!lat1 || !lat2) return "未知";
         const R = 6371; const dLat = (lat2-lat1)*Math.PI/180; const dLon = (lon2-lon1)*Math.PI/180;
         const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-        const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`;
     }
-    function initLocationWatch() {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.watchPosition((pos) => {
-                userCoords.lat = pos.coords.latitude; userCoords.lng = pos.coords.longitude;
-                document.getElementById('coords-text').innerText = `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)`;
-            }, (err) => { document.getElementById('coords-text').innerText = "❌ 定位未開啟"; }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
-        }
-    }
+    function initLocationWatch() { if ("geolocation" in navigator) { navigator.geolocation.watchPosition((pos) => { userCoords.lat = pos.coords.latitude; userCoords.lng = pos.coords.longitude; document.getElementById('coords-text').innerText = `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)`; }, null, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }); } }
     initLocationWatch();
 
-    /* --- 2. 核心交通數據庫 (100% 原始恢復) --- */
+    /* --- 2. 核心交通數據 (100% 還原) --- */
+    const DAILY_LIMIT = 15;
     const cityData = { 'Taipei': ['全區', '中正區', '大同區', '中山區', '松山區', '大安區', '萬華區', '信義區', '士林區', '北投區', '內湖區', '南港區', '文山區'], 'NewTaipei': ['全區', '板橋區', '三重區', '中和區', '永和區', '新莊區', '新店區', '土城區', '蘆洲區', '樹林區', '鶯歌區', '三峽區', '淡水區', '汐止區', '瑞芳區', '五股區', '泰山區', '林口區', '深坑區', '石碇區', '坪林區', '三芝區', '石門區', '八里區', '平溪區', '雙溪區', '貢寮區', '金山區', '萬里區', '烏來區'], 'Keelung': ['全區', '仁愛區', '信義區', '中正區', '中山區', '安樂區', '暖暖區', '七堵區'], 'Taoyuan': ['全區', '桃園區', '中壢區', '平鎮區', '八德區', '楊梅區', '蘆竹區', '大溪區', '龍潭區', '龜山區', '大園區', '觀音區', '新屋區', '復興區'], 'HsinchuCity': ['全區', '東區', '北區', '香山區'], 'HsinchuCounty': ['全區', '竹北市', '竹東鎮', '新埔鎮', '關西鎮', '湖口鄉', '新豐鄉', '峨眉鄉', '寶山鄉', '北埔鄉', '橫山鄉', '芎林鄉', '尖石鄉', '五峰鄉'], 'Yilan': ['全區', '宜蘭市', '羅東鎮', '蘇澳鎮', '頭城鎮', '礁溪鄉', '壯圍鄉', '員山鄉', '冬山鄉', '五結鄉', '三星鄉', '大同鄉', '南澳鄉'], 'Miaoli': ['全區', '苗栗市', '頭份市', '竹南鎮', '後龍鎮', '通霄鎮', '苑裡鎮', '卓蘭鎮', '造橋鄉', '西湖鄉', '頭屋鄉', '公館鄉', '銅鑼鄉', '三義鄉', '大湖鄉', '獅潭鄉', '三灣鄉', '南庄鄉', '泰安鄉'], 'Taichung': ['全區', '中區', '東區', '南區', '西區', '北區', '北屯區', '西屯區', '南屯區', '太平區', '大里區', '霧峰區', '烏日區', '豐原區', '後里區', '石岡區', '東勢區', '和平區', '新社區', '潭子區', '大雅區', '神岡區', '大肚區', '龍井區', '梧棲區', '清水區', '大甲區', '外埔區', '大安區'], 'Changhua': ['全區', '彰化市', '員林市', '和美鎮', '鹿港鎮', '溪湖鎮', '二林鎮', '田中鎮', '北斗鎮', '花壇鄉', '芬園鄉', '大村鄉', '永靖鄉', '伸港鄉', '線西鄉', '福興鄉', '秀水鄉', '埔心鄉', '埔鹽鄉', '大城鄉', '芳苑鄉', '竹塘鄉', '社頭鄉', '二水鄉', '溪州鄉', '田尾鄉', '埤頭鄉'], 'Nantou': ['全區', '南投市', '埔里鎮', '草屯鎮', '竹山鎮', '集集鎮', '名間鄉', '鹿谷鄉', '中寮鄉', '魚池鄉', '國姓鄉', '水里鄉', '信義鄉', '仁愛鄉'], 'Yunlin': ['全區', '斗六市', '斗南鎮', '虎尾鎮', '西螺鎮', '土庫鎮', '北港鎮', '古坑鄉', '大埤鄉', '莿桐鄉', '林內鄉', '二崙鄉', '崙背鄉', '麥寮鄉', '東勢鄉', '褒忠鄉', '台西鄉', '元長鄉', '四湖鄉', '口湖鄉', '水林鄉'], 'ChiayiCity': ['全區', '東區', '西區'], 'ChiayiCounty': ['全區', '太保市', '朴子市', '布袋鎮', '大林鎮', '民雄鄉', '溪口鄉', '新港鄉', '六腳鄉', '東石鄉', '義竹鄉', '鹿草鄉', '水上鄉', '中埔鄉', '竹崎鄉', '梅山鄉', '番路鄉', '大埔鄉', '阿里山鄉'], 'Tainan': ['全區', '中西區', '東區', '南區', '北區', '安平區', '安南區', '永康區', '歸仁區', '新化區', '玉井區', '仁德區', '關廟區', '官田區', '麻豆區', '佳里區', '新營區', '善化區'], 'Kaohsiung': ['全區', '楠梓區', '左營區', '鼓山區', '三民區', '鹽埕區', '前金區', '新興區', '苓雅區', '前鎮區', '旗津區', '小港區', '鳳山區', '大寮區', '鳥松區', '林園區', '仁武區', '大樹區', '大社區', '岡山區', '路竹區', '旗山區', '美濃區'], 'Pingtung': ['全區', '屏東市', '潮州鎮', '東港鎮', '恆春鎮', '萬丹鄉', '長治鄉', '里港鄉', '內埔鄉', '枋寮鄉', '車城鄉'], 'Hualien': ['全區', '花蓮市', '鳳林鎮', '玉里鎮', '新城鄉', '吉安鄉', '壽豐鄉', '光復鄉', '瑞穗鄉'], 'Taitung': ['全區', '台東市', '成功鎮', '關山鎮', '卑南鄉', '鹿野鄉', '池上鄉', '綠島鄉', '蘭嶼鄉'], 'Penghu': ['全區', '馬公市', '湖西鄉', '白沙鄉', '西嶼鄉'], 'Kinmen': ['全區', '金城鎮', '金湖鎮', '金沙鎮', '金寧鄉'], 'Lienchiang': ['全區', '南竿鄉', '北竿鄉', '莒光鄉', '東引鄉'] };
     const mrtLinesTaipei = { '板南線 (BL)': ['龍山寺', '西門', '台北車站', '善導寺', '忠孝新生', '忠孝復興', '忠孝敦化', '國父紀念館', '市政府', '永春', '後山埤', '昆陽', '南港', '南港展覽館'], '淡水信義線 (R)': ['象山', '台北101/世貿', '信義安和', '大安', '大安森林公園', '東門', '中正紀念堂', '台大醫院', '台北車站', '中山', '雙連', '民權西路', '圓山', '劍潭', '士林', '芝山', '明德', '石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡', '竹圍', '紅樹林', '淡水'], '松山新店線 (G)': ['景美', '萬隆', '公館', '台電大樓', '古亭', '中正紀念堂', '小南門', '西門', '北門', '中山', '松江南京', '南京復興', '台北小巨蛋', '南京三民', '松山'], '中和新蘆線 (O)': ['古亭', '東門', '忠孝新生', '松江南京', '行天宮', '中山國小', '民權西路', '大橋頭'], '文湖線 (BR)': ['動物園', '木柵', '萬芳社區', '萬芳醫院', '辛亥', '麟光', '六張犁', '科技大樓', '大安', '忠孝復興', '南京復興', '中山國中', '松山機場', '大直', '劍南路', '西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖', '南港軟體園區', '南港展覽館'] };
     const mrtLinesNewTaipei = { '板南線 (BL)': ['頂埔', '永寧', '土城', '海山', '亞東醫院', '府中', '板橋', '新埔', '江子翠'], '淡水信義線 (R)': ['竹圍', '紅樹林', '淡水'], '松山新店線 (G)': ['新店', '新店區公所', '七張', '大坪林'], '中和新蘆線 (O)': ['南勢角', '景安', '永安市場', '頂溪', '三重國小', '三和國中', '徐匯中學', '三民高中', '蘆洲', '台北橋', '菜寮', '三重', '先嗇宮', '頭前庄', '新莊', '輔大', '丹鳳', '迴龍'], '環狀線 (Y)': ['大坪林', '十四張', '秀朗橋', '景平', '景安', '中和', '橋和', '中原', '板新', '板橋', '新埔民生', '頭前庄', '幸福', '新北產業園區'] };
-    const mrtLinesTaoyuan = { '機場捷運 (A)': ['台北車站', '三重', '新北產業園區', '新莊副都心', '泰山', '泰山貴和', '體育大學', '長庚醫院', '林口', '機場第一航廈', '機場第二航廈', '機場旅館', '大園', '橫山', '領航', '高鐵桃園站', '桃園體育園區', '興南', '環北', '老街溪'] };
+    const mrtLinesTaoyuan = { '機場捷運 (A)': ['台北車站', '三重', '新北產業園區', '新莊副都心', '泰山', '泰山貴和', '體育大學', '長庚醫院', '林口', '山鼻', '坑口', '機場第一航廈', '機場第二航廈', '機場旅館', '大園', '橫山', '領航', '高鐵桃園站', '桃園體育園區', '興南', '環北', '老街溪'] };
     const mrtLinesTaichung = { '綠線': ['北屯總站', '舊社', '松竹', '四維國小', '文心崇德', '文心中清', '文華高中', '文心櫻花', '市政府', '水安宮', '文心森林公園', '南屯', '豐樂公園', '大慶', '九張犁', '九德', '烏日', '高鐵台中站'] };
     const mrtLinesKaohsiung = { '紅線 (R)': ['小港', '高雄國際機場', '草衙', '前鎮高中', '凱旋', '獅甲', '三多商圈', '中央公園', '美麗島', '高雄車站', '後驛', '凹子底', '巨蛋', '生態園區', '左營', '世運', '油廠國小', '楠梓科技園區', '後勁', '都會公園', '青埔', '橋頭糖廠', '橋頭火車站', '岡山高醫', '岡山車站'], '橘線 (O)': ['哈瑪星', '鹽埕埔', '前金', '美麗島', '信義國小', '文化中心', '五塊厝', '苓雅運動園區', '衛武營', '鳳山西站', '鳳山', '大東', '鳳山國中', '大寮'], '輕軌 (C)': ['籬仔內', '凱旋瑞田', '前鎮之星', '凱旋中華', '夢時代', '經貿園區', '軟體園區', '高雄展覽館', '旅運中心', '光榮碼頭', '真愛碼頭', '駁二大義', '駁二蓬萊', '哈瑪星', '壽山公園', '文武聖殿', '鼓山區公所', '鼓山', '馬卡道', '台鐵美術館', '美術館', '聯合醫院', '龍華國小', '愛河之心', '新上國小', '灣仔內', '高雄高工', '樹德家商', '科工館', '聖功醫院', '凱旋公園'] };
     const mrtMap = { 'Taipei': { '中正區': ['台北車站', '善導寺', '忠孝新生', '中正紀念堂', '古亭', '西門', '台大醫院'], '萬華區': ['西門', '龍山寺'], '大安區': ['忠孝復興', '忠孝敦化', '國父紀念館', '信義安和', '大安', '科技大樓', '六張犁', '公館', '東門'], '信義區': ['市政府', '永春', '後山埤', '象山', '台北101/世貿'], '中山區': ['中山', '雙連', '民權西路', '圓山', '松江南京', '行天宮', '中山國小', '大直', '劍南路'], '松山區': ['南京復興', '台北小巨蛋', '南京三三民', '松山'], '大同區': ['大橋頭', '中山', '圓山', '民權西路'], '士林區': ['劍潭', '士林', '芝山', '明德'], '北投區': ['石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '關渡'], '內湖區': ['西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖'], '南港區': ['南港', '南港展覽館', '南港軟體園區', '昆陽'], '文山區': ['動物園', '木柵', '萬芳醫院', '萬芳社區', '景美', '萬隆'] }, 'NewTaipei': { '板橋區': ['板橋', '府中', '新埔', '江子翠', '亞東醫院'], '三重區': ['三重', '菜寮', '台北橋', '三重國小', '三和國中', '徐匯中學'], '中和區': ['景安', '南勢角', '永安市場', '中和'], '永和區': ['頂溪', '永安市場'], '新莊區': ['新莊', '輔大', '丹鳳', '迴龍', '頭前庄'], '新店區': ['新店', '七張', '大坪林', '小碧潭', '新店區公所'], '淡水區': ['淡水', '紅樹林', '竹圍'], '林口區': ['林口'] } };
@@ -183,74 +172,60 @@
         'Hualien': { '花蓮市': ['花蓮'], '玉里鎮': ['玉里'], '新城鄉': ['新城'], '吉安鄉': ['吉安'], '光復鄉': ['光復'] },
         'Taitung': { '台東市': ['台東'], '關山鎮': ['關山'], '池上鄉': ['池上'], '卑南鄉': ['知本'] }
     };
-    const airportMap = { 'Taipei': { '松山區': ['台北松山機場'] }, 'Taoyuan': { '大園區': ['桃園國際機場'] }, 'Taichung': { '沙鹿區': ['台中國際機場'] }, 'Kaohsiung': { '小港區': ['高雄小港機場'] }, 'Penghu': { '湖西鄉': ['澎湖機場'] }, 'Kinmen': { '金湖鎮': ['金門機場'] }, 'Lienchiang': { '南竿鄉': ['馬祖南竿機場'] }, 'Taitung': { '台東市': ['台東機場'] } };
+    const airportMap = { 'Taipei': { '松山區': ['台北松山機場'] }, 'Taoyuan': { '大園區': ['桃園國際機場'] }, 'Taichung': { '沙鹿區': ['台中國際機場'] }, 'Kaohsiung': { '小港區': ['高雄小港機場'] }, 'Penghu': { '湖西鄉': ['澎湖機場'] }, 'Kinmen': { '金湖鎮': ['金門機場'] }, 'Lienchiang': { '南竿鄉': ['馬祖南竿機場'], '北竿鄉': ['馬祖北竿機場'] }, 'Taitung': { '台東市': ['台東機場'] } };
 
-    /* --- 3. AI 邏輯核心 (Gemini-2.5-Flash + 解析強化) --- */
-    function getUsageInfo(userApiKey) {
-        if (!userApiKey) return { remaining: 0 };
-        const today = new Date().toLocaleDateString("zh-TW");
-        const keyId = "KEY_" + userApiKey.slice(-10);
-        if (localStorage.getItem('DATE_' + keyId) !== today) { localStorage.setItem('DATE_' + keyId, today); localStorage.setItem('COUNT_' + keyId, '0'); }
-        return { remaining: DAILY_LIMIT - parseInt(localStorage.getItem('COUNT_' + keyId) || '0') };
-    }
+    /* --- 3. AI 邏輯核心 (Gemini-2.5-Flash + 新搜尋鐵律) --- */
+    function getStoredKey() { return localStorage.getItem('EXPLORER_FINAL_SECURE_KEY') || ""; }
+    function saveApiKey() { const key = document.getElementById('api-key-input').value.trim(); if (key) { localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', key); document.getElementById('api-overlay').style.display = 'none'; refreshUsage(); } }
+    function refreshUsage() { const key = getStoredKey(); const usage = getUsageInfo(key); updateUsageDisplay(usage.remaining); }
+    function getUsageInfo(userApiKey) { if (!userApiKey) return { remaining: 0 }; const keyId = "KEY_" + userApiKey.slice(-10); const today = new Date().toLocaleDateString("zh-TW"); if (localStorage.getItem('DATE_' + keyId) !== today) { localStorage.setItem('DATE_' + keyId, today); localStorage.setItem('COUNT_' + keyId, '0'); } return { remaining: DAILY_LIMIT - parseInt(localStorage.getItem('COUNT_' + keyId) || '0') }; }
+    function updateUsageDisplay(count) { document.getElementById('usage-text').innerText = `今日剩餘次數：${count} 次`; }
 
     async function getAiRecommendation(requestData) {
-    const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
-    if (!userApiKey) return { error: "NO_KEY" };
-    const usage = getUsageInfo(userApiKey);
-    if (usage.remaining <= 0) return { error: "LIMIT_REACHED" };
-
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
-    
-    // 【動態指令】
-    const isHidden = filters.includes("隱藏版");
-    const stationQuery = mrtStation ? `且必須在「${mrtStation}」站步行 500-800 公尺範圍內。` : `請搜尋整個 ${city}${district} 地區。`;
-
-    const prompt = `你是一位精通台灣美食的 Google Maps 數據分析專家。
-    地點：${city}${district} ${stationQuery}
-    種類：${food} / 目的：${purpose} / 預算：${budget}
-    現在時間：${userTime}
-
-    【關鍵搜尋任務】
-    1. 數量：不論條件如何，請務必提供【5 間】真實存在的店家。
-    2. 店名：名稱必須「完全吻合」Google Maps 的標題文字。嚴禁自行優化名稱、嚴禁自加分店括號、嚴禁杜撰。
-    3. 隱藏版邏輯：若勾選隱藏版，請優先挑選評論數 100-600 則且評分 > 4.2 的巷弄店；若未勾選，則挑選大眾知名、真實存在的店。
-    4. 歇業檢查：絕對禁止推薦已歇業或已搬遷的店家。
-    5. 數據精確：必須提供精確的 lat, lng 座標，以便計算離使用者的距離。
-
-    請只回傳 JSON 格式陣列，禁止任何描述文字：
-    [{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
-
-    try {
-        const response = await fetch(url, { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) 
-        });
-        const result = await response.json();
-        const text = result.candidates[0].content.parts[0].text;
+        const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
         
-        // 強大 JSON 提取器 (避免 AI 碎碎念導致崩潰)
-        const jsonMatch = text.match(/\[.*\]/s);
-        if (!jsonMatch) return { data: [] };
-        const parsedData = JSON.parse(jsonMatch[0]);
+        // 核心指令：動態距離邏輯
+        let distanceNote = mrtStation ? 
+            `【硬性鐵律：店家必須在「${mrtStation}」站步行 500 公尺 / 8 分鐘內。若該範圍內無店，請回傳空陣列 [ ]。】` : 
+            `【搜尋範圍：請在整個 ${city}${district} 行政區內尋找大眾知名店家。】`;
+        
+        let countNote = filters.includes("隱藏版") ? 
+            `【隱藏版模式：尋找評論數 100-500 且評分 > 4.2 的店。數量不必湊滿 5 間。】` : 
+            `【一般模式：必須湊足 5 間真實存在的店，禁止回傳少於 5 個。】`;
 
-        const keyId = "KEY_" + userApiKey.slice(-10);
-        localStorage.setItem(`COUNT_${keyId}`, (DAILY_LIMIT - usage.remaining + 1).toString());
-        return { data: parsedData, newRemaining: usage.remaining - 1 };
-    } catch (e) { 
-        console.error("AI Parse Error:", e);
-        return { data: [] }; 
+        const prompt = `你是一位串接 Google Maps 真實數據的專業響導。
+        地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}
+        需求：${food} / ${purpose} / 預算${budget}
+        時間：${userTime}
+        ${distanceNote} ${countNote}
+
+        【真實性準則 - 違者崩潰】
+        1. 禁止杜撰：店名必須吻合 Google Maps 標籤。禁止添加或修改分店括號。
+        2. 寧缺勿濫：找不到完全符合（特別是距離要求）的店請回傳 [ ]。
+        3. 經緯度：必須提供精確 lat, lng 以供距離計算。
+        回傳 JSON：[{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
+
+        try {
+            const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+            const result = await response.json();
+            const text = result.candidates[0].content.parts[0].text;
+            const parsedData = JSON.parse(text.match(/\[.*\]/s)[0]);
+            const keyId = "KEY_" + userApiKey.slice(-10);
+            const usage = getUsageInfo(userApiKey);
+            localStorage.setItem(`COUNT_${keyId}`, (DAILY_LIMIT - usage.remaining + 1).toString());
+            return { data: parsedData, newRemaining: DAILY_LIMIT - (DAILY_LIMIT - usage.remaining + 1) };
+        } catch (e) { return { data: [] }; }
     }
-}
-    /* --- 4. UI 邏輯與攔截 (100% 還原) --- */
+
+    /* --- 4. UI 邏輯與攔截 (100% 原始恢復) --- */
     function updateDistricts() { const city = document.getElementById('city').value; const distSelect = document.getElementById('district'); distSelect.innerHTML = cityData[city].map(d => `<option value="${d}">${d}</option>`).join(''); }
     updateDistricts();
 
     function checkTransAvailability() {
         const city = document.getElementById('city').value;
-        const transport = document.getElementById('transport').value;
         const district = document.getElementById('district').value;
+        const transport = document.getElementById('transport').value;
         const mrtSec = document.getElementById('mrt-section');
         const mrtSel = document.getElementById('mrt-station');
         const label = document.getElementById('trans-label');
@@ -281,7 +256,7 @@
         const cityName = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
         const transport = document.getElementById('transport').value;
         
-        /* 100% 原始攔截邏輯，一個字都沒少 */
+        /* --- 100% 鎖死攔截邏輯 --- */
         const hasMRT = ['Taipei', 'NewTaipei', 'Taoyuan', 'Taichung', 'Kaohsiung'];
         const hasHSR = ['Taipei', 'NewTaipei', 'Taoyuan', 'HsinchuCounty', 'Miaoli', 'Taichung', 'Changhua', 'Yunlin', 'ChiayiCounty', 'Tainan', 'Kaohsiung'];
         const hasAirport = ['Taipei', 'Taoyuan', 'Taichung', 'Tainan', 'Kaohsiung', 'ChiayiCounty', 'Hualien', 'Taitung', 'Penghu', 'Kinmen', 'Lienchiang'];
@@ -290,9 +265,7 @@
         if (transport === 'hsr' && !hasHSR.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有高鐵。`); return; }
         if (transport === 'airport' && !hasAirport.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有機場。`); return; }
 
-        const savedKey = localStorage.getItem('EXPLORER_FINAL_SECURE_KEY') || "";
-        if (!savedKey) { document.getElementById('api-overlay').style.display = 'flex'; return; }
-        
+        if (!getStoredKey()) { document.getElementById('api-overlay').style.display = 'flex'; return; }
         startSearch();
     }
 
@@ -302,24 +275,16 @@
         btn.disabled = true; loader.style.display = 'flex';
         const now = new Date(); const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
         const userTimeString = `${days[now.getDay()]} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+        const data = { userApiKey: getStoredKey(), city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text, district: document.getElementById('district').value, food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text, purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text, budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text, people: document.getElementById('people').value, userTime: userTimeString, mrtStation: document.getElementById('mrt-station').value, filters: (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "") };
         
-        const data = { 
-            userApiKey: localStorage.getItem('EXPLORER_FINAL_SECURE_KEY'), 
-            city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text, 
-            district: document.getElementById('district').value, 
-            food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text, 
-            purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text, 
-            budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text, 
-            people: document.getElementById('people').value, userTime: userTimeString, 
-            mrtStation: document.getElementById('mrt-station').value, 
-            filters: (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "") 
-        };
-
         const res = await getAiRecommendation(data);
         loader.style.display = 'none'; btn.disabled = false;
-        if(!res.data || res.data.length === 0) { alert("🔍 找不到完全符合要求且真實存在的店家，請換個地點試試！"); return; } 
+        if(!res.data || res.data.length === 0) { alert("🔍 找不到完全符合要求的真實店家。建議換個車站或放寬條件再試！"); return; } 
         updateUsageDisplay(res.newRemaining); renderCards(res.data);
     }
+
+    /* --- 5. 卡片與滑動邏輯 (修復崩潰 + 恢復印章) --- */
+    let currentLikedList = []; let swipedCount = 0; let roundCounter = 1;
 
     function renderCards(restaurants) {
         document.getElementById('main-ui').classList.add('blur-mode');
@@ -346,8 +311,8 @@
             if (isDone || !startX) return; el.style.transition = '0.4s ease'; 
             if (Math.abs(moveX) > 100) { 
                 const dir = moveX > 0 ? 1 : -1; 
-                if (totalInRound === 1 && dir === 1) { // 最終首選印章
-                    el.style.transform = 'translateX(0) rotate(0deg)'; if(likeLabel) likeLabel.style.opacity = 0;
+                if (totalInRound === 1 && dir === 1) { 
+                    el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0;
                     const stamp = el.querySelector('.label-chosen'); if(stamp) stamp.classList.add('active');
                     document.getElementById('round-info').innerText = "🏆 您的最佳首選"; isDone = true;
                 } else { if (dir === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, dir, totalInRound); }
@@ -356,9 +321,7 @@
     }
     function finishSwipe(el, wrapper, dir, totalInRound) { el.style.transform = `translateX(${dir * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === totalInRound) { if(currentLikedList.length > 0) { roundCounter++; renderCards(currentLikedList); } else { alert("重新探索吧！"); resetUI(); } } }, 300); }
     function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); roundCounter = 1; }
-    function saveApiKey() { const key = document.getElementById('api-key-input').value.trim(); if (key) { localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', key); document.getElementById('api-overlay').style.display = 'none'; refreshUsage(); } }
     window.onload = function() { const saved = localStorage.getItem('EXPLORER_FINAL_SECURE_KEY'); if (saved) { document.getElementById('api-key-input').value = saved; refreshUsage(); } };
-    function updateUsageDisplay(count) { document.getElementById('usage-text').innerText = `今日剩餘次數：${count} 次`; const btn = document.getElementById('search-btn'); btn.disabled = (count <= 0); }
 </script>
 </body>
 </html>
