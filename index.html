@@ -195,39 +195,54 @@
     }
 
     async function getAiRecommendation(requestData) {
-        const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+    const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
+    if (!userApiKey) return { error: "NO_KEY" };
+    const usage = getUsageInfo(userApiKey);
+    if (usage.remaining <= 0) return { error: "LIMIT_REACHED" };
+
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+    
+    // 【動態指令】
+    const isHidden = filters.includes("隱藏版");
+    const stationQuery = mrtStation ? `且必須在「${mrtStation}」站步行 500-800 公尺範圍內。` : `請搜尋整個 ${city}${district} 地區。`;
+
+    const prompt = `你是一位精通台灣美食的 Google Maps 數據分析專家。
+    地點：${city}${district} ${stationQuery}
+    種類：${food} / 目的：${purpose} / 預算：${budget}
+    現在時間：${userTime}
+
+    【關鍵搜尋任務】
+    1. 數量：不論條件如何，請務必提供【5 間】真實存在的店家。
+    2. 店名：名稱必須「完全吻合」Google Maps 的標題文字。嚴禁自行優化名稱、嚴禁自加分店括號、嚴禁杜撰。
+    3. 隱藏版邏輯：若勾選隱藏版，請優先挑選評論數 100-600 則且評分 > 4.2 的巷弄店；若未勾選，則挑選大眾知名、真實存在的店。
+    4. 歇業檢查：絕對禁止推薦已歇業或已搬遷的店家。
+    5. 數據精確：必須提供精確的 lat, lng 座標，以便計算離使用者的距離。
+
+    請只回傳 JSON 格式陣列，禁止任何描述文字：
+    [{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
+
+    try {
+        const response = await fetch(url, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) 
+        });
+        const result = await response.json();
+        const text = result.candidates[0].content.parts[0].text;
         
-        // 核心思路：動態距離邏輯
-        let distanceNote = mrtStation ? `【絕對鐵律：你現在是資料校對員，所有推薦店家必須在「${mrtStation}」站半徑 500 公尺內。請精確比對經緯度。】` : `【全區模式：請在整個 ${city}${district} 範圍內尋找最真實的知名店。】`;
-        let countNote = filters.includes("隱藏版") ? `【模式：隱藏版。數量不強求，只給真實巷弄店。】` : `【模式：一般。強制湊滿 5 間真實存在的店。】`;
+        // 強大 JSON 提取器 (避免 AI 碎碎念導致崩潰)
+        const jsonMatch = text.match(/\[.*\]/s);
+        if (!jsonMatch) return { data: [] };
+        const parsedData = JSON.parse(jsonMatch[0]);
 
-        const prompt = `你是一位串接 Google Maps 真實數據的專業導遊。
-        地點：${city}${district} ${mrtStation ? '(緊鄰'+mrtStation+'站)' : ''}
-        條件：${food} / ${purpose} / 預算${budget}
-        時間：${userTime}
-        ${distanceNote} ${countNote}
-
-        【判別要求 - 杜撰店名者系統會崩潰】
-        1. 店名(name)：必須 100% 吻合地圖藍色標題，禁止自加分店、禁止加括號。
-        2. 寧缺勿濫：找不到完全符合條件的店請回傳空陣列 [ ]。
-        3. 經緯度：必須提供正確的 lat, lng。
-
-        回傳純 JSON 陣列：
-        [{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
-
-        try {
-            const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-            const result = await response.json();
-            const text = result.candidates[0].content.parts[0].text;
-            const parsedData = JSON.parse(text.match(/\[.*\]/s)[0]);
-            const keyId = "KEY_" + userApiKey.slice(-10);
-            const usage = getUsageInfo(userApiKey);
-            localStorage.setItem(`COUNT_${keyId}`, (DAILY_LIMIT - usage.remaining + 1).toString());
-            return { data: parsedData, newRemaining: DAILY_LIMIT - (DAILY_LIMIT - usage.remaining + 1) };
-        } catch (e) { return { data: [] }; }
+        const keyId = "KEY_" + userApiKey.slice(-10);
+        localStorage.setItem(`COUNT_${keyId}`, (DAILY_LIMIT - usage.remaining + 1).toString());
+        return { data: parsedData, newRemaining: usage.remaining - 1 };
+    } catch (e) { 
+        console.error("AI Parse Error:", e);
+        return { data: [] }; 
     }
-
+}
     /* --- 4. UI 邏輯與攔截 (100% 還原) --- */
     function updateDistricts() { const city = document.getElementById('city').value; const distSelect = document.getElementById('district'); distSelect.innerHTML = cityData[city].map(d => `<option value="${d}">${d}</option>`).join(''); }
     updateDistricts();
