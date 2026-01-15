@@ -189,32 +189,42 @@
     function getUsageInfo(userApiKey) { if (!userApiKey) return { remaining: 0 }; const keyId = "KEY_" + userApiKey.slice(-10); const today = new Date().toLocaleDateString("zh-TW"); if (localStorage.getItem('DATE_' + keyId) !== today) { localStorage.setItem('DATE_' + keyId, today); localStorage.setItem('COUNT_' + keyId, '0'); } return { remaining: DAILY_LIMIT - parseInt(localStorage.getItem('COUNT_' + keyId) || '0') }; }
     function updateUsageDisplay(count) { document.getElementById('usage-text').innerText = `今日剩餘次數：${count} 次`; }
 
-    async function getAiRecommendation(requestData) {
+     async function getAiRecommendation(requestData) {
         const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
         const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
         
-        let distanceNote = mrtStation ? `【鐵律：店家必須在「${mrtStation}」站步行 500 公尺內。禁止杜撰，若無店則回傳空陣列 [ ]。】` : `【範圍：整個 ${city}${district} 行政區。】`;
-        let countRule = filters.includes("隱藏版") ? `【隱藏版：數量不必湊滿 5 間。】` : `【一般模式：必須給滿 5 間真實存在的店。】`;
+        // 新思路指令：根據是否有選站點動態調整距離規則
+        let distanceNote = mrtStation ? `【絕對指令：所有推薦店家必須在「${mrtStation}」站半徑 500 公尺內。請精確對照 Google Maps，禁止超過。】` : `【搜尋範圍：請在整個 ${city}${district} 行政區內尋找。】`;
+        let countNote = filters.includes("隱藏版") ? `【隱藏版模式：尋找評分 > 4.2 且評論數 100-800 之間的真實巷弄店。數量不強求，1-5 間皆可。】` : `【一般模式：必須湊滿 5 間大眾知名且真實存在的店家，禁止回傳少於 5 個物件。】`;
 
-        const prompt = `你是一位串接 Google Maps 真實數據的專家。地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}。需求：${food} / ${purpose} / 預算${budget}。
-        ${distanceNote} ${countRule}
-        【數據真實性】
-        1. 禁止杜撰：店名必須等同 Google Maps 原始標籤。
-        2. 寧缺勿濫：找不到完全符合（特別是站點 500m 內）的真實店家請回傳 [ ]。
-        3. 必須包含精確 lat, lng 座標以供計算距離。
-        回傳 JSON 陣列：[{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
+        const prompt = `你是一位串接 Google Maps 真實數據的專業嚮導。
+        地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}
+        條件：${food} / ${purpose} / 預算${budget} / ${people}
+        現在時間：${userTime}
+        ${distanceNote}
+        ${countNote}
+
+        【資料真實性鐵律 - 違者崩潰】
+        1. 禁止杜撰：店名(name)必須 100% 符合 Google 地圖上的原始藍色標題，禁止自加分店名或括號。
+        2. 寧缺勿濫：找不到完全符合（特別是 500m 內）的真實店家請直接回傳 [ ]。
+        3. 經緯度：必須提供精確 lat, lng 座標以供距離計算。
+        4. 地圖查詢：map_query 格式為「店名 + 縣市」。
+
+        回傳格式 (純 JSON 陣列)：
+        [{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
 
         try {
             const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
             const result = await response.json();
             const text = result.candidates[0].content.parts[0].text;
             const parsedData = JSON.parse(text.match(/\[.*\]/s)[0]);
+            
+            const keyId = "KEY_" + userApiKey.slice(-10);
             const usage = getUsageInfo(userApiKey);
-            localStorage.setItem(`COUNT_${"KEY_" + userApiKey.slice(-10)}`, (DAILY_LIMIT - usage.remaining + 1).toString());
+            localStorage.setItem(`COUNT_${keyId}`, (DAILY_LIMIT - usage.remaining + 1).toString());
             return { data: parsedData, newRemaining: usage.remaining - 1 };
         } catch (e) { return { data: [] }; }
     }
-
     /* --- 4. UI 邏輯與攔截 --- */
     function updateDistricts() { const city = document.getElementById('city').value; const distSelect = document.getElementById('district'); distSelect.innerHTML = cityData[city].map(d => `<option value="${d}">${d}</option>`).join(''); }
     updateDistricts();
