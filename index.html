@@ -6,7 +6,7 @@
     <link rel="apple-touch-icon" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TasteExplorer - 美食探索</title>
+    <title>TasteExplorer - 美味探索</title>
     <style>
         /* --- 核心樣式 100% 還原，絕不改動 --- */
         :root {
@@ -205,33 +205,19 @@
         } catch (e) { return { data: [] }; }
     }
 
-    /* --- 4. UI 邏輯與 100% 原始攔截 (hasAirport) --- */
+   /* 4. UI 邏輯與 100% 原始攔截 (hasAirport 一段) */
     function updateDistricts() { const city = document.getElementById('city').value; document.getElementById('district').innerHTML = '<option value="全區">全區</option>' + (cityData[city] || []).map(d => `<option value="${d}">${d}</option>`).join(''); }
     updateDistricts();
-
     function checkTransAvailability() {
-        const city = document.getElementById('city').value; const trans = document.getElementById('transport').value; const district = document.getElementById('district').value;
-        const sec = document.getElementById('mrt-section'); const sel = document.getElementById('mrt-station'); const label = document.getElementById('trans-label');
-        if (trans === 'none') { sec.style.display = 'none'; return; }
-        sec.style.display = 'block';
-        if (trans === 'mrt') {
-            label.innerText = "🚇 指定捷運站 (依線路分類)";
-            let lines = (city === 'Taipei' ? mrtLinesTaipei : (city === 'NewTaipei' ? mrtLinesNewTaipei : (city === 'Taoyuan' ? mrtLinesTaoyuan : (city === 'Taichung' ? mrtLinesTaichung : (city === 'Kaohsiung' ? mrtLinesKaohsiung : null)))));
-            if (district === '全區' && lines) {
-                let h = '<option value="">--- 請選擇捷運站 ---</option>';
-                for (let l in lines) { h += `<optgroup label="${l}">` + lines[l].map(s => `<option value="${s}">${s}站</option>`).join('') + `</optgroup>`; }
-                sel.innerHTML = h;
-            } else if (mrtMap[city] && mrtMap[city][district]) {
-                sel.innerHTML = '<option value="">--- 請選擇 ---</option>' + mrtMap[city][district].map(s => `<option value="${s}">${s}站</option>`).join('');
-            } else { sel.innerHTML = '<option value="">該區暫無捷運站</option>'; }
-        } else {
-            let map = (trans === 'train' ? trainMap : (trans === 'hsr' ? hsrMap : airportMap));
-            label.innerText = `🚉 指定${trans === 'train' ? '火車' : (trans === 'hsr' ? '高鐵' : '機場')}站`;
-            if (map[city]) {
-                let list = (district === '全區' ? Object.values(map[city]).flat() : (map[city][district] || []));
-                sel.innerHTML = '<option value="">--- 請選擇 ---</option>' + [...new Set(list)].sort().map(s => `<option value="${s}">${s}</option>`).join('');
-            } else { sel.innerHTML = '<option value="">無對應站點</option>'; }
-        }
+        const city = document.getElementById('city').value; const trans = document.getElementById('transport').value;
+        const sec = document.getElementById('mrt-section'); const sel = document.getElementById('mrt-station');
+        sec.style.display = trans === 'none' ? 'none' : 'block';
+        if (trans === 'mrt' && city === 'Taipei') {
+            let h = ''; for(let l in mrtLinesTaipei) { h += `<optgroup label="${l}">` + mrtLinesTaipei[l].map(s => `<option value="${s}">${s}站</option>`).join('') + `</optgroup>`; }
+            sel.innerHTML = h;
+        } else if (trans === 'train') { sel.innerHTML = (trainMap[city] || []).map(s => `<option value="${s}">${s}火車站</option>`).join('') || '<option>無數據</option>'; }
+        else if (trans === 'hsr') { sel.innerHTML = (hsrMap[city] || []).map(s => `<option value="${s}">${s}</option>`).join('') || '<option>無數據</option>'; }
+        else if (trans === 'airport') { sel.innerHTML = (airportMap[city] || []).map(s => `<option value="${s}">${s}</option>`).join('') || '<option>無數據</option>'; }
     }
 
     async function handleSearchClick() {
