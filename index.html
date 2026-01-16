@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TasteExplorer - 美味探索</title>
    <style>
-/* --- 1. 核心樣式 --- */
+/* --- 1. 核心樣式：100% 配色 --- */
 :root {
     --primary-orange: #FF6600;
     --glass-bg: rgba(25, 25, 25, 0.85);
@@ -38,10 +38,10 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
 .bg-slide.active { opacity: 0.6; }
 
-/* --- 2. API 設定視窗：100% 置中 --- */
+/* --- 2. 恢復原始美麗的 API 設定介面 --- */
 #api-overlay { 
     position: fixed; 
-    top: 0; left: 0; width: 100vw; height: 100vh; 
+    top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(0,0,0,0.5); 
     backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
     z-index: 5000; display: none; 
@@ -52,7 +52,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
 .api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-/* --- 3. 佈局核心：雙向彈簧結構 (標題隨卡片長度上下位移) --- */
+/* --- 3. 佈局核心：強制的頂、中、底三段結構 (解決座標漂移) --- */
 .container { 
     width: 95%; 
     max-width: 357px; 
@@ -60,26 +60,30 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 10; 
     display: flex; 
     flex-direction: column; 
+    /* 核心：讓標題組、卡片、按鈕這「三塊」平均分配螢幕剩餘空間 */
+    justify-content: space-evenly; 
     align-items: center; 
-    padding: 0; /* 空間由內部的 flex: 1 自動分配 */
+    padding: 10px 0; 
     position: relative; 
 }
 .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
-/* Group 1: 頂部組 (標題彈簧) */
+/* --- Group 1: 頂部標題組 (Logo + Tagline + Coords 鎖死) --- */
 .header { 
     width: 100%; 
-    flex: 1; /* 彈簧 1：負責吸收上方剩餘空間，將標題往下推 */
+    flex: 0 0 auto; /* 禁止標題區塊伸展，解決座標亂漂問題 */
     display: flex; 
     flex-direction: column; 
-    justify-content: center; /* 讓標題組在上方空間內垂直置中，達成自動下移 */
     align-items: center; 
     position: relative; 
+    padding: 0;
 }
 .logo { font-size: 2.77rem; font-weight: 800; color: var(--primary-orange); line-height: 1.1; letter-spacing: -1px; margin: 0; }
+
+/* 標語：嚴格鎖死 6px */
 .tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 6px; }
 
-/* 座標：鎖死在標語下方 6px */
+/* 座標：嚴格鎖死 6px (永遠跟隨標語，不准往下掉) --- */
 .location-status {
     font-size: 0.68rem; 
     color: var(--accent-yellow);
@@ -95,39 +99,39 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .location-dot { width: 6px; height: 6px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
 
-/* ⚙️ 設定按鈕：維持在標題右側對齊 */
+/* ⚙️ 設定按鈕：與標題水平置中，並對齊卡片邊緣 */
 .settings-btn { 
     position: absolute; 
-    top: 50%;
+    top: 0;
     right: 0px; 
-    transform: translateY(-50%); /* 精確垂直置中於 logo */
+    height: 3rem; 
+    display: flex;
+    align-items: center;
     font-size: 24px; 
     cursor: pointer; 
     z-index: 50; 
-    padding: 10px;
 }
 
-/* Group 2: 中間選項組 (玻璃卡片) */
+/* --- Group 2: 中間選項組 (玻璃卡片) --- */
 .glass-card { 
     width: 100%; 
     background: rgba(20, 20, 20, 0.75); 
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
     border-radius: 20px; padding: 18px; 
     border: 1px solid var(--glass-border); 
-    flex: 0 0 auto; /* 卡片長度由內容決定，不主動伸縮 */
+    flex: 0 0 auto; 
 }
 
-/* Group 3: 底部組 (按鈕彈簧) */
+/* --- Group 3: 底部組 (按鈕與次數) --- */
 .footer-action { 
     width: 100%; 
-    flex: 1; /* 彈簧 2：負責吸收下方剩餘空間，將按鈕往上提 */
+    flex: 0 0 auto; 
     display: flex; 
     flex-direction: column; 
     align-items: center; 
-    justify-content: center; /* 讓按鈕在下方空間垂直置中 */
 }
 
-/* --- 表單內部細節 (維持原版) --- */
+/* --- 表單細節 (維持最原始) --- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .full-width { grid-column: span 2; }
 label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
@@ -141,7 +145,7 @@ select { background: transparent; border: none; color: white; width: 100%; outli
 .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); }
 .usage-hint { font-size: 0.85rem; margin-top: 10px; opacity: 0.7; color: #ffffff; font-weight: 500; }
 
-/* --- 卡片顯示介面 --- */
+/* --- 探索卡片與 Overlays --- */
 #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
 .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
 .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
