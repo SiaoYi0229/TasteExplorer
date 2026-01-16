@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TasteExplorer - 美味探索</title>
    <style>
-/* --- 1. 核心樣式：100% 配色 --- */
+/* --- 1. 核心樣式：100% 還原原始配色與質感 --- */
 :root {
     --primary-orange: #FF6600;
     --glass-bg: rgba(25, 25, 25, 0.85);
@@ -38,18 +38,28 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
 .bg-slide.active { opacity: 0.6; }
 
-/* --- 2. API 設定：確保 100% 置中 --- */
+/* --- 2. 恢復原始美麗的 API 設定介面 --- */
 #api-overlay { 
     position: fixed; 
-    top: 0; left: 0; width: 100vw; height: 100vh; 
-    background: rgba(0,0,0,0.7); 
+    top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.5); 
     backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
-    z-index: 9999; display: none; 
+    z-index: 5000; 
+    display: none; 
     flex-direction: column; align-items: center; justify-content: center; 
+    padding: 40px 20px; text-align: center; 
 }
-.api-card { width: 90%; max-width: 340px; background: rgba(20, 20, 20, 0.9); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); text-align: center; }
+.api-card { 
+    width: 100%; max-width: 340px; 
+    background: rgba(20, 20, 20, 0.8); 
+    border: 1px solid var(--glass-border); 
+    border-radius: 24px; padding: 30px; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5); 
+}
+.api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
+.api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-/* --- 3. 佈局核心：三段呼吸結構 (解決座標漂移與擁擠) --- */
+/* --- 3. 佈局核心：完美的三段式分組 --- */
 .container { 
     width: 95%; 
     max-width: 357px; 
@@ -57,43 +67,28 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 10; 
     display: flex; 
     flex-direction: column; 
-    /* 關鍵：利用 space-between 讓頂、中、底三塊徹底分開，不再擠在一起 */
-    justify-content: space-between; 
+    justify-content: space-between; /* 頂、中、底三大塊自動推開 */
     align-items: center; 
-    /* 加大上下內距，善用螢幕空間，讓標題更靠頂部，按鈕更靠底部 */
-    padding: 60px 0 40px 0; 
+    padding: 20px 0 30px 0; /* 縮小上方 padding 讓標題往上移，活用空間 */
     position: relative; 
 }
 .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
-/* Group 1: 頂部組 (鎖死標題、標語、座標) */
+/* --- Group 1: 頂部標題組 (Logo + Tagline + Coords) --- */
 .header { 
     width: 100%; 
-    flex: 0 0 auto; /* 禁止標題區塊伸展，解決座標亂跑問題 */
+    flex: 0 0 auto; /* 鎖死高度，防止內含元件漂移 */
     display: flex; 
     flex-direction: column; 
     align-items: center; 
     position: relative; 
 }
+.logo { font-size: 2.77rem; font-weight: 800; color: var(--primary-orange); line-height: 1.1; letter-spacing: -1px; margin: 0; }
 
-.logo { 
-    font-size: 2.77rem; 
-    font-weight: 800; 
-    color: var(--primary-orange); 
-    line-height: 1.1; 
-    letter-spacing: -1px; 
-    margin: 0; 
-}
+/* 標語：嚴格 6px */
+.tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 6px; }
 
-/* 標語：間距固定 6px */
-.tagline { 
-    font-size: 1.2rem; 
-    color: #ffffff; 
-    opacity: 0.8; 
-    margin-top: 6px; 
-}
-
-/* 座標：間距固定 6px (永遠跟隨標語) */
+/* 座標：嚴格 6px (三位一體組) */
 .location-status {
     font-size: 0.68rem; 
     color: var(--accent-yellow);
@@ -109,7 +104,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .location-dot { width: 6px; height: 6px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
 
-/* ⚙️ 設定按鈕：與標題水平置中，並對齊卡片邊緣 */
+/* ⚙️ 設定按鈕：對齊 TasteExplorer 右側與卡片邊緣 */
 .settings-btn { 
     position: absolute; 
     top: 0;
@@ -122,18 +117,17 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 50; 
 }
 
-/* Group 2: 中間選項組 (玻璃卡片) */
+/* --- Group 2: 中間選項組 (玻璃卡片) --- */
 .glass-card { 
     width: 100%; 
     background: rgba(20, 20, 20, 0.75); 
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
-    border-radius: 20px; 
-    padding: 18px; 
+    border-radius: 20px; padding: 18px; 
     border: 1px solid var(--glass-border); 
-    flex: 0 0 auto; /* 禁止卡片亂跳 */
+    flex: 0 0 auto; 
 }
 
-/* Group 3: 底部組 (按鈕與次數) */
+/* --- Group 3: 底部組 (按鈕) --- */
 .footer-action { 
     width: 100%; 
     flex: 0 0 auto; 
@@ -142,23 +136,21 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     align-items: center; 
 }
 
-/* --- 表單內部細節 --- */
+/* --- 原版表單元件樣式 --- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .full-width { grid-column: span 2; }
 label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
 .input-box { background: var(--input-bg); border-radius: 10px; height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid transparent; }
 .input-box:focus-within { border-color: var(--primary-orange); }
 select { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; appearance: none; -webkit-appearance: none; cursor: pointer; }
-
 .toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
 .toggle-btn { background: var(--input-bg); height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; }
 .toggle-btn.selected { background: rgba(255,102,0,0.2); border-color: var(--primary-orange); color: var(--primary-orange); font-weight: bold; }
 #btn-open.selected { background: rgba(46,204,113,0.15); border-color: #2ecc71; color: #2ecc71; }
-
 .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); }
 .usage-hint { font-size: 0.85rem; margin-top: 10px; opacity: 0.7; color: #ffffff; font-weight: 500; }
 
-/* --- 卡片顯示介面 --- */
+/* --- 探索介面與卡片 (含距離功能) --- */
 #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
 .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
 .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
