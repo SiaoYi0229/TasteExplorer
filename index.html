@@ -41,33 +41,25 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 /* --- 2. API 設定：確保 100% 置中 --- */
 #api-overlay { 
     position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100vw; 
-    height: 100vh; 
+    top: 0; left: 0; width: 100vw; height: 100vh; 
     background: rgba(0,0,0,0.7); 
-    backdrop-filter: blur(15px); 
-    -webkit-backdrop-filter: blur(15px); 
-    z-index: 9999; 
-    display: none; 
-    flex-direction: column; 
-    align-items: center; 
-    justify-content: center; 
+    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+    z-index: 9999; display: none; 
+    flex-direction: column; align-items: center; justify-content: center; 
     text-align: center;
 }
 .api-card { width: 90%; max-width: 340px; background: rgba(20, 20, 20, 0.9); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
 .api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
 .api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-/* --- 3. 座標樣式：修正「太貼下面框」的問題 --- */
+/* --- 3. 座標樣式：完美置中且不黏貼 --- */
 .location-status {
     font-size: 0.75rem;
     color: var(--accent-yellow);
     background: rgba(0,0,0,0.3);
     padding: 4px 12px;
     border-radius: 20px;
-    margin-top: 10px;
-    margin-bottom: 25px; /* 增加底部間距，推開卡片 */
+    margin: 10px 0; /* 讓 flexbox 自動去平衡它 */
     display: flex;
     align-items: center;
     gap: 5px;
@@ -76,7 +68,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .location-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
 
-/* --- 4. 主佈局：優化選單展開位移 --- */
+/* --- 4. 主佈局：自動平均分配核心 --- */
 .container { 
     width: 95%; 
     max-width: 357px; 
@@ -84,15 +76,16 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 10; 
     display: flex; 
     flex-direction: column; 
-    justify-content: space-between; 
+    justify-content: space-evenly; /* 重要：讓 Header、卡片、按鈕自動平均分開 */
     align-items: center; 
-    padding: 10px 0 20px 0; 
+    padding: 10px 0; 
+    position: relative; 
 }
 .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
 .header { 
     width: 100%; 
-    flex: 1.5; 
+    flex: 0 1 auto; /* 內容有多少佔多少 */
     display: flex; 
     flex-direction: column; 
     justify-content: center; 
@@ -102,34 +95,33 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .logo { font-size: 2.77rem; font-weight: 800; color: var(--primary-orange); line-height: 1.2; letter-spacing: -1px; }
 .tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 4px; }
 
-/* ⚙️ 設定按鈕：修正為與英文標題水平置中 */
+/* ⚙️ 設定按鈕：對齊標題最右邊 (對齊卡片右緣) */
 .settings-btn { 
     position: absolute; 
-    top: 0; /* 改為頂部開始 */
-    right: 0; 
-    height: 3.3rem; /* 配合 Logo 的高度範圍 */
-    display: flex;
-    align-items: center; /* 讓齒輪在標題列高度內垂直置中 */
+    top: 50%; 
+    right: 0px; /* 改為 0，對齊容器邊緣 */
+    transform: translateY(-50%); 
     font-size: 24px; 
     cursor: pointer; 
     z-index: 50; 
-    padding: 0 10px; /* 增加左右點擊空間 */
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 5px; /* 稍微內縮一點避免貼邊 */
 }
 
 .glass-card { 
     width: 100%; 
     background: rgba(20, 20, 20, 0.75); 
-    backdrop-filter: blur(20px); 
-    -webkit-backdrop-filter: blur(20px); 
-    border-radius: 20px; 
-    padding: 18px; 
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
+    border-radius: 20px; padding: 18px; 
     border: 1px solid var(--glass-border); 
-    flex-shrink: 0; 
+    flex: 0 0 auto; 
 }
 
 .footer-action { 
     width: 100%; 
-    flex: 1; 
+    flex: 0 1 auto; 
     display: flex; 
     flex-direction: column; 
     align-items: center; 
@@ -141,7 +133,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .full-width { grid-column: span 2; }
 label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
 .input-box { background: var(--input-bg); border-radius: 10px; height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid transparent; }
-.input-box:focus-within { border-color: var(--primary-orange); box-shadow: 0 0 8px rgba(255, 102, 0, 0.3); }
+.input-box:focus-within { border-color: var(--primary-orange); }
 select { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; appearance: none; -webkit-appearance: none; cursor: pointer; }
 
 .toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
@@ -163,11 +155,7 @@ select { background: transparent; border: none; color: white; width: 100%; outli
 .badge-price { background: rgba(255,255,255,0.1); color: #eee; }
 .badge-distance { background: var(--primary-orange); color: #fff; }
 
-.info-row { font-size: 0.85rem; display: flex; gap: 6px; color: #ddd; line-height: 1.4; }
-.info-label { color: var(--primary-orange); font-weight: bold; flex-shrink: 0; }
-.card-summary { font-size: 0.88rem; font-style: italic; opacity: 0.85; border-left: 2px solid var(--primary-orange); padding-left: 10px; margin: 5px 0; }
 .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; font-size: 0.95rem; }
-
 .close-swiper { position: fixed; bottom: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 30px; border-radius: 50px; cursor: pointer; z-index: 120; font-weight: bold; backdrop-filter: blur(10px); }
 #loader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; }
 .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top-color: var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite; }
