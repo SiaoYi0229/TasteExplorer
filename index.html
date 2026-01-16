@@ -52,14 +52,14 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
 .api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-/* --- 3. 座標樣式：完美置中且不黏貼 --- */
+/* --- 3. 座標樣式：回歸最愛設計，適中距離 --- */
 .location-status {
     font-size: 0.75rem;
     color: var(--accent-yellow);
     background: rgba(0,0,0,0.3);
     padding: 4px 12px;
     border-radius: 20px;
-    margin: 10px 0; /* 讓 flexbox 自動去平衡它 */
+    margin-top: 10px; /* Logo 與座標的間距 */
     display: flex;
     align-items: center;
     gap: 5px;
@@ -68,7 +68,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .location-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
 
-/* --- 4. 主佈局：自動平均分配核心 --- */
+/* --- 4. 主佈局：雙彈簧對稱平衡結構 --- */
 .container { 
     width: 95%; 
     max-width: 357px; 
@@ -76,40 +76,38 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 10; 
     display: flex; 
     flex-direction: column; 
-    justify-content: space-evenly; /* 重要：讓 Header、卡片、按鈕自動平均分開 */
     align-items: center; 
-    padding: 10px 0; 
+    padding: 0; /* 由 flex:1 控制間距 */
     position: relative; 
 }
 .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
+/* 上方彈簧：負責將卡片往下壓 */
 .header { 
     width: 100%; 
-    flex: 0 1 auto; /* 內容有多少佔多少 */
+    flex: 1; /* 彈性佔據剩餘空間 */
     display: flex; 
     flex-direction: column; 
-    justify-content: center; 
+    justify-content: flex-end; /* 讓內容靠下對齊，與卡片保持關聯 */
     align-items: center; 
+    padding-bottom: 25px; /* 與卡片間的固定美感間距 */
     position: relative; 
 }
 .logo { font-size: 2.77rem; font-weight: 800; color: var(--primary-orange); line-height: 1.2; letter-spacing: -1px; }
 .tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 4px; }
 
-/* ⚙️ 設定按鈕：對齊標題最右邊 (對齊卡片右緣) */
+/* ⚙️ 設定按鈕：對齊標題最右邊 (同時對齊卡片右緣) */
 .settings-btn { 
     position: absolute; 
-    top: 50%; 
-    right: 0px; /* 改為 0，對齊容器邊緣 */
-    transform: translateY(-50%); 
+    bottom: 45px; /* 精確對應 Logo 的位置 */
+    right: 0px; 
     font-size: 24px; 
     cursor: pointer; 
     z-index: 50; 
-    height: 100%;
-    display: flex;
-    align-items: center;
-    padding: 0 5px; /* 稍微內縮一點避免貼邊 */
+    padding: 10px;
 }
 
+/* 玻璃卡片：維持原尺寸，不伸縮 */
 .glass-card { 
     width: 100%; 
     background: rgba(20, 20, 20, 0.75); 
@@ -119,13 +117,15 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     flex: 0 0 auto; 
 }
 
+/* 下方彈簧：負責將卡片往上提 */
 .footer-action { 
     width: 100%; 
-    flex: 0 1 auto; 
+    flex: 1; /* 彈性佔據剩餘空間 */
     display: flex; 
     flex-direction: column; 
     align-items: center; 
-    justify-content: center; 
+    justify-content: flex-start; /* 讓內容靠上對齊，與卡片保持關聯 */
+    padding-top: 25px; /* 與卡片間的固定美感間距 */
 }
 
 /* --- 5. 表單細節 (維持原始) --- */
@@ -144,17 +144,15 @@ select { background: transparent; border: none; color: white; width: 100%; outli
 .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); }
 .usage-hint { font-size: 0.85rem; margin-top: 10px; opacity: 0.7; color: #ffffff; font-weight: 500; }
 
-/* --- 6. 卡片顯示樣式 --- */
+/* --- 6. 卡片顯示與其他 --- */
 #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
 .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
 .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
 .swipe-card { width: 100%; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border); padding: 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-
 .card-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
 .badge-rating { background: var(--accent-yellow); color: #000; }
 .badge-price { background: rgba(255,255,255,0.1); color: #eee; }
 .badge-distance { background: var(--primary-orange); color: #fff; }
-
 .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; font-size: 0.95rem; }
 .close-swiper { position: fixed; bottom: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 30px; border-radius: 50px; cursor: pointer; z-index: 120; font-weight: bold; backdrop-filter: blur(10px); }
 #loader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; }
