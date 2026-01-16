@@ -6,7 +6,7 @@
     <link rel="apple-touch-icon" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TasteExplorer - 美味探索</title>
+    <title>TasteExplorer - 美食探索</title>
     <style>
         /* --- 核心樣式 100% 還原，絕不改動 --- */
         :root {
@@ -186,31 +186,24 @@
     function refreshUsage() { const key = getStoredKey(); const usage = getUsageInfo(key); document.getElementById('usage-text').innerText = `今日剩餘次數：${usage.remaining} 次`; }
     function getUsageInfo(key) { if(!key) return { remaining:0 }; const today = new Date().toLocaleDateString("zh-TW"); const keyId = "KEY_" + key.slice(-10); if(localStorage.getItem('DATE_'+keyId) !== today){ localStorage.setItem('DATE_'+keyId, today); localStorage.setItem('COUNT_'+keyId, '0'); } return { remaining: Math.max(0, 15 - parseInt(localStorage.getItem('COUNT_'+keyId) || '0')) }; }
 
-    async function getAiRecommendation(requestData) {
-        const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
-        
-        let distNote = mrtStation ? `【鐵律：店家必須在「${mrtStation}」站半徑 500m 內。禁止杜撰，若無店則回傳 [ ]。】` : `【範圍：整個 ${city}${district} 地區。】`;
-        let countRule = filters.includes("隱藏版") ? `數量不必湊滿5間。` : `必須給滿 5 間。`;
-
-        const prompt = `你是一位串接地圖真實數據的響導專家。地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}。需求：${food} / ${purpose} / 預算${budget}。
-        ${distNote} ${countRule}
-        【核心準則】1.禁止杜撰：店名必須等同 Google Maps 藍色標題文字。2.禁止自加括號分店名。3.必須提供精確 lat, lng。
-        回傳 JSON 陣列：[{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
-
+    async function getAiRecommendation(data) {
+        const usage = getUsageInfo(data.userApiKey);
+        if (usage.remaining <= 0) return { error: "DAILY_LIMIT" };
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${data.userApiKey}`;
+        const distRule = data.mrtStation ? `鐵律：地點必須在「${data.mrtStation}」站半徑 500m 內，嚴禁推薦歇業店，禁止杜撰假店。` : `範圍：搜尋整個 ${data.city}${data.district} 知名真實名店。`;
+        const countRule = data.filters.includes("隱藏版") ? `隱藏版模式：不必湊滿 5 間。` : `一般模式：必須給滿 5 間真實存在的店。`;
+        const prompt = `你是一位串接 Google Maps 真實數據的專家。地點：${data.city}${data.district}。需求：${data.food} / 預算${data.budget}。${distRule} ${countRule}
+        【核心要求】1.禁止杜撰：店名必須等同 Google 地圖原始藍色標題文字。2.絕對禁止已歇業店家。3.必須提供精確 lat, lng。
+        回傳 JSON 陣列：[{ "name":"", "rating":"", "hours":"", "signature":"", "review_summary":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
         try {
-            const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-            const result = await response.json();
-            const text = result.candidates[0].content.parts[0].text;
-            const parsedData = JSON.parse(text.match(/\[.*\]/s)[0]);
-            
-            const keyId = "KEY_" + userApiKey.slice(-10);
-            const usage = getUsageInfo(userApiKey);
-            localStorage.setItem(`COUNT_${keyId}`, (DAILY_LIMIT - usage.remaining + 1).toString());
-            return { data: parsedData, newRemaining: usage.remaining - 1 };
+            const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+            const result = await res.json();
+            const dataArr = JSON.parse(result.candidates[0].content.parts[0].text.match(/\[.*\]/s)[0]);
+            const keyId = "KEY_" + data.userApiKey.slice(-10);
+            localStorage.setItem('COUNT_'+keyId, (DAILY_LIMIT - usage.remaining + 1).toString());
+            return { data: dataArr, newRemaining: usage.remaining - 1 };
         } catch (e) { return { data: [] }; }
     }
-
 
     /* --- 4. UI 邏輯與 100% 原始攔截 (hasAirport) --- */
     function updateDistricts() { const city = document.getElementById('city').value; document.getElementById('district').innerHTML = '<option value="全區">全區</option>' + (cityData[city] || []).map(d => `<option value="${d}">${d}</option>`).join(''); }
@@ -246,7 +239,7 @@
         const cityName = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
         const transport = document.getElementById('transport').value;
         
-        /* 100% 原始攔截邏輯補齊 */
+        /* 100% 原始機場攔截邏輯補齊 */
         const hasMRT = ['Taipei', 'NewTaipei', 'Taoyuan', 'Taichung', 'Kaohsiung'];
         const hasHSR = ['Taipei', 'NewTaipei', 'Taoyuan', 'HsinchuCounty', 'Miaoli', 'Taichung', 'Changhua', 'Yunlin', 'ChiayiCounty', 'Tainan', 'Kaohsiung'];
         const hasAirport = ['Taipei', 'Taoyuan', 'Taichung', 'Tainan', 'Kaohsiung', 'ChiayiCounty', 'Hualien', 'Taitung', 'Penghu', 'Kinmen', 'Lienchiang'];
@@ -260,51 +253,48 @@
     }
 
     async function startSearch() {
-        const btn = document.getElementById('search-btn');
-        btn.disabled = true; document.getElementById('loader').style.display = 'flex';
-        const now = new Date(); const userTimeString = `${now.getHours()}:${now.getMinutes()}`;
-        const data = { userApiKey: getStoredKey(), city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text, district: document.getElementById('district').value, food: document.getElementById('food').value, purpose: document.getElementById('purpose').value, budget: document.getElementById('budget').value, people: document.getElementById('people').value, userTime: userTimeString, mrtStation: document.getElementById('mrt-station').value, filters: (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "") };
+        btn = document.getElementById('search-btn'); btn.disabled = true; document.getElementById('loader').style.display = 'flex';
+        const now = new Date(); const userTime = `${now.getHours()}:${now.getMinutes()}`;
+        const data = { userApiKey: getStoredKey(), city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text, district: document.getElementById('district').value, food: document.getElementById('food').value, budget: document.getElementById('budget').value, mrtStation: document.getElementById('mrt-station').value, filters: (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版" : "") };
         const res = await getAiRecommendation(data);
         document.getElementById('loader').style.display = 'none'; btn.disabled = false;
-        if(!res.data || res.data.length === 0) { alert("🔍 找不到完全符合要求且真實存在的店家，請放寬搜尋條件！"); return; } 
-        updateUsageDisplay(res.newRemaining); renderCards(res.data);
+        if(res.data && res.data.length > 0) { refreshUsage(); renderCards(res.data); } 
+        else { alert("🔍 找不到符合要求的真實店家！"); }
     }
 
-    /* --- 5. 卡片與滑動系統 (恢復印章) --- */
+    /* 5. 卡片渲染 (印章與燈號鎖定) */
     let currentLikedList = []; let swipedCount = 0; let roundCounter = 1;
-    function renderCards(restaurants) {
+    function renderCards(list) {
         document.getElementById('main-ui').classList.add('blur-mode');
         const stack = document.getElementById('card-stack'); stack.innerHTML = '';
         document.getElementById('swiper-overlay').style.display = 'flex';
         currentLikedList = []; swipedCount = 0;
         document.getElementById('round-info').innerText = roundCounter === 1 ? "左右滑動篩選" : `第 ${roundCounter} 輪決選`;
-        restaurants.forEach((res) => {
-            const distLabel = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
+        list.forEach((res) => {
+            const dist = userCoords.lat ? calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng) : "--";
             const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
             const card = document.createElement('div'); card.className = 'swipe-card';
-            card.innerHTML = `<div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div><div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-distance">📍 距離 ${distLabel}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="card-summary">"${res.review_summary}"</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query || (res.name + ' ' + document.getElementById('city').options[document.getElementById('city').selectedIndex].text))}" target="_blank">🔍 在 Google 地圖確認</a>`;
-            wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length);
+            card.innerHTML = `<div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div><div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-distance">📍 距離 ${dist}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="card-summary">"${res.review_summary}"</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query || res.name)}" target="_blank">🔍 Google 地圖確認</a>`;
+            wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, list.length);
         });
-        stack.scrollTo(0, 0); 
+        stack.scrollTo(0,0);
     }
-
     function initSwipe(el, wrapper, resData, total) {
         let sx, mx = 0; let done = false;
-        el.addEventListener('touchstart', e => { if (done || e.target.tagName === 'A') return; sx = e.touches[0].clientX; el.style.transition = 'none'; }, {passive:true});
-        el.addEventListener('touchmove', e => { if (done || !sx) return; mx = e.touches[0].clientX - sx; el.style.transform = `translateX(${mx}px) rotate(${mx/20}deg)`; el.querySelector('.label-like').style.opacity = mx > 0 ? Math.min(mx/100, 1) : 0; el.querySelector('.label-nope').style.opacity = mx < 0 ? Math.min(Math.abs(mx)/100, 1) : 0; }, {passive:false});
+        el.addEventListener('touchstart', e => { if(done || e.target.tagName==='A') return; sx = e.touches[0].clientX; el.style.transition = 'none'; });
+        el.addEventListener('touchmove', e => { if(done || !sx) return; mx = e.touches[0].clientX - sx; el.style.transform = `translateX(${mx}px) rotate(${mx/20}deg)`; el.querySelector('.label-like').style.opacity = (mx > 0 && !(total===1 && mx>0)) ? Math.min(mx/100, 1) : 0; el.querySelector('.label-nope').style.opacity = mx < 0 ? Math.min(Math.abs(mx)/100, 1) : 0; });
         el.addEventListener('touchend', () => { 
-            if (done || !sx) return; el.style.transition = '0.4s ease'; 
-            if (Math.abs(mx) > 100) { 
-                const dir = mx > 0 ? 1 : -1; 
-                if (total === 1 && dir === 1) { 
-                    el.style.transform = 'translateX(0) rotate(0deg)'; el.querySelector('.label-chosen').classList.add('active'); el.querySelector('.label-like').style.opacity = 0; document.getElementById('round-info').innerText = "🏆 您的最佳首選"; done = true;
-                } else { if (dir === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, dir, total); }
+            if(done || !sx) return; el.style.transition = '0.4s ease'; 
+            if(Math.abs(mx) > 100) { 
+                const d = mx > 0 ? 1 : -1; 
+                if(total === 1 && d === 1) { el.style.transform = 'translateX(0)'; el.querySelector('.label-chosen').classList.add('active'); el.querySelector('.label-like').style.opacity = 0; document.getElementById('round-info').innerText = "🏆 您的最佳首選"; done = true; } 
+                else { if (d === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, d, total); }
             } else { el.style.transform = 'translateX(0) rotate(0deg)'; el.querySelector('.label-like').style.opacity = 0; el.querySelector('.label-nope').style.opacity = 0; } sx = null; 
         });
     }
-    function finishSwipe(el, wrapper, dir, total) { el.style.transform = `translateX(${dir * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === total) { if(currentLikedList.length > 0) { roundCounter++; renderCards(currentLikedList); } else { alert("重新探索吧！"); resetUI(); } } }, 300); }
+    function finishSwipe(el, wrapper, d, t) { el.style.transform = `translateX(${d * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === t) { if(currentLikedList.length > 0) { roundCounter++; renderCards(currentLikedList); } else { alert("重新探索吧！"); resetUI(); } } }, 300); }
     function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); roundCounter = 1; }
-    window.onload = function() { refreshUsage(); updateDistricts(); };
+    window.onload = function() { refreshUsage(); };
 </script>
 </body>
 </html>
