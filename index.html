@@ -38,7 +38,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
 .bg-slide.active { opacity: 0.6; }
 
-/* --- 2. API 設定：確保 100% 置中 --- */
+/* --- 2. API 設定視窗：確保 100% 置中 --- */
 #api-overlay { 
     position: fixed; 
     top: 0; left: 0; width: 100vw; height: 100vh; 
@@ -52,14 +52,14 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
 .api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-/* --- 3. 座標樣式：整體縮小並往上跟隨標題 --- */
+/* --- 3. 座標樣式：緊貼標語下方並縮小 --- */
 .location-status {
-    font-size: 0.68rem; /* 縮小字體 */
+    font-size: 0.68rem; 
     color: var(--accent-yellow);
     background: rgba(0,0,0,0.2);
-    padding: 2px 10px; /* 縮小內距 */
+    padding: 2px 10px;
     border-radius: 20px;
-    margin-top: 6px; /* 緊跟在 tagline 下方 */
+    margin-top: 4px; /* 緊貼標語下方 */
     display: flex;
     align-items: center;
     gap: 4px;
@@ -69,7 +69,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .location-dot { width: 6px; height: 6px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
 
-/* --- 4. 主佈局：全自動平均間隔 --- */
+/* --- 4. 主佈局：全自動平均間隔分配 --- */
 .container { 
     width: 95%; 
     max-width: 357px; 
@@ -77,7 +77,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 10; 
     display: flex; 
     flex-direction: column; 
-    justify-content: space-evenly; /* 重要：自動平均分配所有元件間的剩餘空間 */
+    justify-content: space-evenly; /* 自動分配剩餘空間 */
     align-items: center; 
     padding: 10px 0; 
     position: relative; 
@@ -96,12 +96,12 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .logo { font-size: 2.77rem; font-weight: 800; color: var(--primary-orange); line-height: 1.2; letter-spacing: -1px; }
 .tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 2px; }
 
-/* ⚙️ 設定按鈕：對齊標題最右邊 (對齊卡片右緣) */
+/* ⚙️ 設定按鈕：與標題水平置中，對齊卡片右緣 */
 .settings-btn { 
     position: absolute; 
     top: 0;
     right: 0px; 
-    height: 3.3rem; /* 與 logo 高度一致 */
+    height: 3.3rem; /* 標題文字高度範圍 */
     display: flex;
     align-items: center;
     font-size: 24px; 
@@ -128,7 +128,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     justify-content: center; 
 }
 
-/* --- 5. 表單細節 (維持原始) --- */
+/* --- 5. 表單與其他細節 (維持原始) --- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .full-width { grid-column: span 2; }
 label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
@@ -144,7 +144,7 @@ select { background: transparent; border: none; color: white; width: 100%; outli
 .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); }
 .usage-hint { font-size: 0.85rem; margin-top: 10px; opacity: 0.7; color: #ffffff; font-weight: 500; }
 
-/* --- 6. 卡片顯示設計 --- */
+/* --- 6. 探索卡片設計 --- */
 #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
 .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
 .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
