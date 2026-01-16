@@ -6,7 +6,7 @@
     <link rel="apple-touch-icon" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TasteExplorer - 美味探索</title>
+    <title>TasteExplorer - 美食探索</title>
     <style>
         /* --- 核心樣式 100% 還原，絕不改動 --- */
         :root {
@@ -248,39 +248,42 @@
         else { alert("🔍 找不到符合要求的真實店家！"); }
     }
 
-    /* 5. 卡片渲染 (印章與燈號鎖定) */
+    /* --- 5. 卡片與印章邏輯 (100% 完整) --- */
     let currentLikedList = []; let swipedCount = 0; let roundCounter = 1;
-    function renderCards(list) {
+    function renderCards(restaurants) {
         document.getElementById('main-ui').classList.add('blur-mode');
         const stack = document.getElementById('card-stack'); stack.innerHTML = '';
         document.getElementById('swiper-overlay').style.display = 'flex';
         currentLikedList = []; swipedCount = 0;
         document.getElementById('round-info').innerText = roundCounter === 1 ? "左右滑動篩選" : `第 ${roundCounter} 輪決選`;
-        list.forEach((res) => {
-            const dist = userCoords.lat ? calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng) : "--";
+        restaurants.forEach((res) => {
+            const distLabel = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
             const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
             const card = document.createElement('div'); card.className = 'swipe-card';
-            card.innerHTML = `<div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div><div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-distance">📍 距離 ${dist}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="card-summary">"${res.review_summary}"</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query || res.name)}" target="_blank">🔍 Google 地圖確認</a>`;
-            wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, list.length);
+            card.innerHTML = `<div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-price">💰 ${res.price}</span><span class="card-badge badge-distance">📍 距離 ${distLabel}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div><div class="card-summary">"${res.review_summary}"</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query || (res.name + ' ' + document.getElementById('city').options[document.getElementById('city').selectedIndex].text))}" target="_blank">🔍 在 Google 地圖確認</a>`;
+            wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length);
         });
-        stack.scrollTo(0,0);
+        stack.scrollTo(0, 0); 
     }
-    function initSwipe(el, wrapper, resData, total) {
-        let sx, mx = 0; let done = false;
-        el.addEventListener('touchstart', e => { if(done || e.target.tagName==='A') return; sx = e.touches[0].clientX; el.style.transition = 'none'; });
-        el.addEventListener('touchmove', e => { if(done || !sx) return; mx = e.touches[0].clientX - sx; el.style.transform = `translateX(${mx}px) rotate(${mx/20}deg)`; el.querySelector('.label-like').style.opacity = (mx > 0 && !(total===1 && mx>0)) ? Math.min(mx/100, 1) : 0; el.querySelector('.label-nope').style.opacity = mx < 0 ? Math.min(Math.abs(mx)/100, 1) : 0; });
+
+    function initSwipe(el, wrapper, resData, totalInRound) {
+        let startX, moveX = 0; let isDone = false;
+        el.addEventListener('touchstart', (e) => { if (isDone || e.target.tagName === 'A') return; startX = e.touches[0].clientX; el.style.transition = 'none'; }, {passive: true});
+        el.addEventListener('touchmove', (e) => { if (isDone || !startX) return; moveX = e.touches[0].clientX - startX; el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`; el.querySelector('.label-like').style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0; el.querySelector('.label-nope').style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0; }, {passive: false});
         el.addEventListener('touchend', () => { 
-            if(done || !sx) return; el.style.transition = '0.4s ease'; 
-            if(Math.abs(mx) > 100) { 
-                const d = mx > 0 ? 1 : -1; 
-                if(total === 1 && d === 1) { el.style.transform = 'translateX(0)'; el.querySelector('.label-chosen').classList.add('active'); el.querySelector('.label-like').style.opacity = 0; document.getElementById('round-info').innerText = "🏆 您的最佳首選"; done = true; } 
-                else { if (d === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, d, total); }
-            } else { el.style.transform = 'translateX(0) rotate(0deg)'; el.querySelector('.label-like').style.opacity = 0; el.querySelector('.label-nope').style.opacity = 0; } sx = null; 
+            if (isDone || !startX) return; el.style.transition = '0.4s ease'; 
+            if (Math.abs(moveX) > 100) { 
+                const dir = moveX > 0 ? 1 : -1; 
+                if (totalInRound === 1 && dir === 1) { 
+                    el.style.transform = 'translateX(0)'; el.querySelector('.label-chosen').classList.add('active'); 
+                    document.getElementById('round-info').innerText = "🏆 您的最佳首選"; isDone = true;
+                } else { if (dir === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, dir, totalInRound); }
+            } else { el.style.transform = 'translateX(0) rotate(0deg)'; el.querySelector('.label-like').style.opacity = 0; el.querySelector('.label-nope').style.opacity = 0; } startX = null; 
         });
     }
-    function finishSwipe(el, wrapper, d, t) { el.style.transform = `translateX(${d * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === t) { if(currentLikedList.length > 0) { roundCounter++; renderCards(currentLikedList); } else { alert("重新探索吧！"); resetUI(); } } }, 300); }
+    function finishSwipe(el, wrapper, dir, totalInRound) { el.style.transform = `translateX(${dir * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === totalInRound) { if(currentLikedList.length > 0) { roundCounter++; renderCards(currentLikedList); } else { alert("重新探索吧！"); resetUI(); } } }, 300); }
     function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); roundCounter = 1; }
-    window.onload = function() { refreshUsage(); };
+    function updateUsageDisplay(count) { document.getElementById('usage-text').innerText = `今日剩餘次數：${count} 次`; }
 </script>
 </body>
 </html>
