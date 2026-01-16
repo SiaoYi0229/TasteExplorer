@@ -6,7 +6,7 @@
     <link rel="apple-touch-icon" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TasteExplorer - 美食探索</title>
+    <title>TasteExplorer - 美味探索</title>
     <style>
         /* --- 核心樣式 100% 還原，絕不改動 --- */
         :root {
@@ -86,7 +86,51 @@
         .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; font-size: 0.95rem; }
         .close-swiper { position: fixed; bottom: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 30px; border-radius: 50px; cursor: pointer; z-index: 120; font-weight: bold; backdrop-filter: blur(10px); }
         #round-info { background: rgba(255, 102, 0, 0.2); border: 1px solid var(--primary-orange); padding: 8px 20px; border-radius: 50px; margin-top: 30px; margin-bottom: 10px; font-weight: bold; z-index: 110; pointer-events: none; }
-    <script>
+    </style>
+</head>
+<body touch-action="none">
+    <div id="api-overlay"><div class="api-card"><h2>🔑 API 設定</h2><p>請輸入您的 Gemini API Key。<br>設定後享有獨立的每日 15 次配額。</p><input type="password" id="api-key-input" class="api-input" placeholder="貼上您的 API Key (AIza...)"><button class="api-save-btn" onclick="saveApiKey()">確認並儲存</button><a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent-yellow); font-size:0.85rem; display:block; margin-top:15px;">👉 點此申請您的 API Key</a><button onclick="document.getElementById('api-overlay').style.display='none'" style="background:none; border:none; color:#777; margin-top:20px;">返回首頁</button></div></div>
+    <div id="bg-container"></div>
+    <div class="container" id="main-ui">
+        <div class="header">
+            <div class="logo">TasteExplorer</div>
+            <div class="settings-btn" onclick="document.getElementById('api-overlay').style.display='flex'">⚙️</div>
+            <div class="tagline">探索隱藏美味 享受極致饗宴</div>
+            <div id="location-display" class="location-status"><div class="location-dot"></div><span id="coords-text">正在同步 GPS...</span></div>
+        </div>
+        <div class="glass-card">
+            <div class="form-grid">
+                <div class="form-group"><label>📍 縣市</label><div class="input-box"><select id="city" onchange="updateDistricts(); checkTransAvailability();">
+                    <optgroup label="北部地區"><option value="Taipei" selected>台北市</option><option value="NewTaipei">新北市</option><option value="Keelung">基隆市</option><option value="Taoyuan">桃園市</option><option value="HsinchuCity">新竹市</option><option value="HsinchuCounty">新竹縣</option><option value="Yilan">宜蘭縣</option></optgroup>
+                    <optgroup label="中部地區"><option value="Miaoli">苗栗縣</option><option value="Taichung">台中市</option><option value="Changhua">彰化縣</option><option value="Nantou">南投縣</option><option value="Yunlin">雲林縣</option></optgroup>
+                    <optgroup label="南部地區"><option value="ChiayiCity">嘉義市</option><option value="ChiayiCounty">嘉義縣</option><option value="Tainan">台南市</option><option value="Kaohsiung">高雄市</option><option value="Pingtung">屏東縣</option></optgroup>
+                    <optgroup label="東部與離島"><option value="Hualien">花蓮縣</option><option value="Taitung">台東縣</option><option value="Penghu">澎湖縣</option><option value="Kinmen">金門縣</option><option value="Lienchiang">連江縣</option></optgroup>
+                </select></div></div>
+                <div class="form-group"><label>🏙️ 行政區</label><div class="input-box"><select id="district" onchange="checkTransAvailability();"><option>全區</option></select></div></div>
+                <div class="form-group full-width"><label>🚆 交通偏好</label><div class="input-box"><select id="transport" onchange="checkTransAvailability()"><option value="none" selected>🤷‍♂️ 不拘</option><option value="mrt">🚇 鄰近捷運站 (步行可達)</option><option value="hsr">🚄 鄰近高鐵站 (步行可達)</option><option value="train">🚂 鄰近火車站 (步行可達)</option><option value="airport">✈️ 鄰近機場 (步行可達)</option></select></div></div>
+                <div class="form-group full-width" id="mrt-section" style="display:none;"><label id="trans-label">🚉 指定站點</label><div class="input-box"><select id="mrt-station"></select></div></div>
+                <div class="form-group full-width"><label>🤤 想吃什麼？</label><div class="input-box"><select id="food">
+                    <option value="all">全部 (什麼都想吃)</option>
+                    <optgroup label="🔥 熱門精選"><option value="hotpot">火鍋 / 麻辣鍋 / 涮涮鍋</option><option value="bbq">燒肉 / 日式烤肉 / 韓式烤肉</option><option value="steak">牛排 / 鐵板燒</option><option value="buffet">吃到飽 (Buffet)</option></optgroup>
+                    <optgroup label="🍜 台式與中式"><option value="taiwanese_snack">台灣小吃 / 路邊攤</option><option value="beef_noodle">牛肉麵</option><option value="rechao">海鮮熱炒 / 合菜</option><option value="hot_soup">滷味 / 鹽酥雞 / 宵夜</option></optgroup>
+                    <optgroup label="🍣 日式料理"><option value="ramen">日式拉麵 / 烏龍麵</option><option value="sushi">壽司 / 生魚片 / 丼飯</option><option value="izakaya">居酒屋 / 串燒</option><option value="curry">日式咖哩 / 定食</option></optgroup>
+                    <optgroup label="🌍 異國風味"><option value="korean">韓式料理 / 炸雞</option><option value="thai_viet">泰式 / 越式料理</option><option value="american">美式漢堡 / 炸物</option><option value="italian">義式料理 / 披薩 / 義大利麵</option></optgroup>
+                    <optgroup label="☕ 放鬆時刻"><option value="brunch">早午餐 (Brunch)</option><option value="cafe">咖啡廳 / 下午茶 / 甜點</option><option value="bistro">餐酒館 / Bar</option></optgroup>
+                    <optgroup label="🥬 其他"><option value="vegetarian">素食 / 蔬食</option><option value="healthy">健康餐盒 / 輕食</option></optgroup>
+                </select></div></div>
+                <!-- 順序鎖死：人數 -> 用餐目的 -> 預算範圍 -->
+                <div class="form-group full-width"><label>👥 人數</label><div class="input-box"><select id="people"><option selected>1~2 人</option><option>2~4 人</option><option>4~6 人</option><option>6 人以上</option></select></div></div>
+                <div class="form-group full-width"><label>🎯 用餐目的</label><div class="input-box"><select id="purpose"><option>🤷‍♂️ 不拘 (隨意吃吃)</option><option>👯 朋友聚餐 (熱鬧)</option><option>💑 情侶約會 (氣氛)</option><option>👨‍👩‍👧‍👦 家庭聚會 (長輩/小孩)</option><option>🧘 一人獨享 (安靜)</option><option>💼 商務宴請 (正式)</option><option>🌙 宵夜場 (深夜)</option><option>📸 IG打卡/網美店</option><option>⚡ 快速解決 (趕時間)</option><option>🎉 慶生/紀念日</option></select></div></div>
+                <div class="form-group full-width"><label>💰 預算範圍</label><div class="input-box"><select id="budget"><option value="low">💵 平價 (&lt;$300)</option><option value="mid" selected>💵💵 中價位 ($300～$800)</option><option value="high">💵💵💵 高級 (&gt;$800)</option><option value="luxury">💎 頂級奢華 (&gt;$2000)</option></select></div></div>
+                <div class="form-group full-width"><div class="toggle-row"><div id="btn-hidden" class="toggle-btn" onclick="this.classList.toggle('selected')">🤫 隱藏版</div><div id="btn-open" class="toggle-btn" onclick="this.classList.toggle('selected')">🕒 營業中</div></div></div>
+            </div>
+        </div>
+        <div class="footer-action"><button id="search-btn" class="cta-button" onclick="handleSearchClick()">開始探索美食</button><div id="usage-text" class="usage-hint"></div></div>
+    </div>
+    <div id="loader"><div class="spinner"></div><p style="color: white; margin-top: 10px; font-weight: bold;">正在穿梭巷弄中...</p></div>
+    <div id="swiper-overlay"><div id="round-info" style="margin-top:30px; font-weight:bold; z-index:110;"></div><div class="card-stack" id="card-stack"></div><button class="close-swiper" onclick="resetUI()" style="position:fixed;bottom:30px;padding:10px 30px;background:#333;color:#fff;border:none;border-radius:20px;z-index:150;">返回調整</button></div>
+
+<script>
     /* --- 1. 視覺與座標初始化 (置頂加載防止黑屏) --- */
     const images = ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1', 'https://images.unsplash.com/photo-1594046243098-0fceea9d451e', 'https://images.unsplash.com/photo-1563245372-f21724e3856d', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836', 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38'];
     const bgContainer = document.getElementById('bg-container');
@@ -331,4 +375,3 @@
 </script>
 </body>
 </html>
-
