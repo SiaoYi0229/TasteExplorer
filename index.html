@@ -6,7 +6,7 @@
     <link rel="apple-touch-icon" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TasteExplorer - 美食探索</title>
+    <title>TasteExplorer - 美味探索</title>
     <style>
         /* --- 核心樣式 100% 還原，絕不改動 --- */
         :root {
@@ -196,64 +196,77 @@
     const airportMap = { 'Taipei': { '松山區': ['台北松山機場'] }, 'Taoyuan': { '大園區': ['桃園國際機場'] }, 'Taichung': { '沙鹿區': ['台中國際機場'] }, 'Kaohsiung': { '小港區': ['高雄小港機場'] }, 'Penghu': { '湖西鄉': ['澎湖機場'] }, 'Kinmen': { '金湖鎮': ['金門機場'] }, 'Lienchiang': { '南竿鄉': ['馬祖南竿機場'], '北竿鄉': ['馬祖北竿機場'] }, 'Taitung': { '台東市': ['台東機場'] } };
     const mrtMap = { 'Taipei': { '中正區': ['台北車站', '善導寺', '忠孝新生', '中正紀念堂', '古亭', '西門', '台大醫院'], '萬華區': ['西門', '龍山寺'], '大安區': ['忠孝復興', '忠孝敦化', '國父紀念館', '信義安和', '大安', '科技大樓', '六張犁', '公館', '東門'], '信義區': ['市政府', '永春', '後山埤', '象山', '台北101/世貿'], '中山區': ['中山', '雙連', '民權西路', '圓山', '松江南京', '行天宮', '中山國小', '大直', '劍南路'], '松山區': ['南京復興', '台北小巨蛋', '南京三三民', '松山'], '大同區': ['大橋頭', '中山', '圓山', '民權西路'], '士林區': ['劍潭', '士林', '芝山', '明德'], '北投區': ['石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '關渡'], '內湖區': ['西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖'], '南港區': ['南港', '南港展覽館', '南港軟體園區', '昆陽'], '文山區': ['動物園', '木柵', '萬芳醫院', '萬芳社區', '景美', '萬隆'] }, 'NewTaipei': { '板橋區': ['板橋', '府中', '新埔', '江子翠', '亞東醫院'], '三重區': ['三重', '菜寮', '台北橋', '三重國小', '三和國中', '徐匯中學'], '中和區': ['景安', '南勢角', '永安市場', '中和'], '永和區': ['頂溪', '永安市場'], '新莊區': ['新莊', '輔大', '丹鳳', '迴龍', '頭前庄'], '新店區': ['新店', '七張', '大坪林', '小碧潭', '新店區公所'], '淡水區': ['淡水', '紅樹林', '竹圍'], '林口區': ['林口'] } };
 
-    /* --- 3. 核心 API Key 管理與計次 --- */
-    function getStoredKey() { return localStorage.getItem('EXPLORER_FINAL_SECURE_KEY') || ""; }
-    function saveApiKey() {
-        const key = document.getElementById('api-key-input').value.trim();
-        if (key) {
-            localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', key);
-            document.getElementById('api-overlay').style.display = 'none';
-            refreshUsage();
-        }
-    }
-    function refreshUsage() {
-        const key = getStoredKey();
-        if (key) {
-            document.getElementById('api-key-input').value = key;
-            const usage = getUsageInfo(key);
-            document.getElementById('usage-text').innerText = `今日剩餘次數：${usage.remaining} 次`;
-        }
-    }
-    function getUsageInfo(userApiKey) {
-        if (!userApiKey) return { remaining: 0 };
-        const today = new Date().toLocaleDateString("zh-TW");
-        const keyId = "KEY_" + userApiKey.slice(-10);
-        if (localStorage.getItem('DATE_' + keyId) !== today) {
-            localStorage.setItem('DATE_' + keyId, today);
-            localStorage.setItem('COUNT_' + keyId, '0');
-        }
-        return { remaining: Math.max(0, DAILY_LIMIT - parseInt(localStorage.getItem('COUNT_' + keyId) || '0')) };
-    }
-    function updateUsageDisplay(count) { document.getElementById('usage-text').innerText = `今日剩餘次數：${count} 次`; }
+    // 1. 取得儲存的金鑰
+function getStoredKey() {
+    return localStorage.getItem('EXPLORER_FINAL_SECURE_KEY') || "";
+}
 
-    /* --- 4. AI 推薦核心 (Gemini-2.5-Flash + 新思路) --- */
+// 2. 儲存金鑰（移除成功彈窗，直接關閉）
+function saveApiKey() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (!key) {
+        alert("請輸入有效的 Key！");
+        return;
+    }
+    localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', key);
+    document.getElementById('api-overlay').style.display = 'none';
+    refreshUsage();
+}
+
+// 3. 每日 15 次配額檢查邏輯
+function getUsageInfo(userApiKey) {
+    if (!userApiKey) return { remaining: 0 };
+    const today = new Date().toLocaleDateString("zh-TW");
+    const keyId = "KEY_" + userApiKey.slice(-10);
+    if (localStorage.getItem('DATE_' + keyId) !== today) {
+        localStorage.setItem('DATE_' + keyId, today);
+        localStorage.setItem('COUNT_' + keyId, '0');
+    }
+    const used = parseInt(localStorage.getItem('COUNT_' + keyId) || '0');
+    return { remaining: Math.max(0, 15 - used) };
+}
+
+// 4. 更新介面顯示次數並自動填入 Key
+function refreshUsage() {
+    const key = getStoredKey();
+    if (key) {
+        document.getElementById('api-key-input').value = key;
+        const usage = getUsageInfo(key);
+        document.getElementById('usage-text').innerText = `今日剩餘次數：${usage.remaining} 次`;
+    }
+}
+
+// 網頁重開自動加載
+window.addEventListener('load', () => {
+    refreshUsage();
+    if (typeof updateDistricts === 'function') updateDistricts();
+});
+
     async function getAiRecommendation(requestData) {
-        const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
-        const usage = getUsageInfo(userApiKey);
-        if (usage.remaining <= 0) return { error: "DAILY_LIMIT" };
+    const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+    
+    let distRule = mrtStation ? `【鐵律：店家必須在「${mrtStation}」站半徑 500m 內，禁止推薦超過此距離的店。】` : `【範圍：搜尋整個 ${city}${district} 行政區熱門店。】`;
+    let countRule = filters.includes("隱藏版") ? `數量不強求，只給真實在地店。` : `必須湊滿 5 間真實存在的店。`;
 
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+    const prompt = `你是一位串接 Google Maps 真實數據的導遊。地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}。需求：${food} / ${purpose} / 預算${budget}。
+    時間：${userTime}。 ${distRule} ${countRule}
+    【真實性要求】1.店名必須吻合 Google Maps 標題，禁止自加分店。2.禁止歇業店。3.必須提供 lat, lng。
+    回傳 JSON：[{ "name":"", "rating":"", "hours":"", "signature":"", "review_summary":"", "map_query":"", "lat":0.0, "lng":0.0, "price":"" }]`;
+
+    try {
+        const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+        const result = await res.json();
+        if (result.error) return { error: result.error.message };
+        const dataArr = JSON.parse(result.candidates[0].content.parts[0].text.match(/\[.*\]/s)[0]);
         
-        let distPrompt = mrtStation ? `【絕對要求：地點必須在「${mrtStation}」站步行 500 公尺內。禁止杜撰！若該站 500m 內無店，請回傳 [ ]。】` : `【範圍：搜尋整個 ${city}${district} 地區知名店家。】`;
-        let countPrompt = filters.includes("隱藏版") ? `數量不必湊滿5間，只給巷弄私房店。` : `必須湊滿5間真實店。`;
-
-        const prompt = `你是一位串接 Google Maps 真實數據的專家。地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}。需求：${food} / ${purpose} / 預算${budget}。
-        ${distPrompt} ${countRule = countPrompt}
-        【核心準則】1.店名必須等同 Google 地圖標籤文字。2.絕對禁止歇業店。3.必須提供精確 lat, lng。
-        回傳 JSON 陣列：[{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "map_query":"", "lat":0.0, "lng":0.0 }]`;
-
-        try {
-            const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-            const result = await response.json();
-            const text = result.candidates[0].content.parts[0].text;
-            const parsedData = JSON.parse(text.match(/\[.*\]/s)[0]);
-            
-            const keyId = "KEY_" + userApiKey.slice(-10);
-            const currentUsed = parseInt(localStorage.getItem('COUNT_' + keyId) || '0');
-            localStorage.setItem('COUNT_' + keyId, (currentUsed + 1).toString());
-            return { data: parsedData, newRemaining: DAILY_LIMIT - (currentUsed + 1) };
-        } catch (e) { return { data: [] }; }
-    }
+        // 成功後寫入計數
+        const keyId = "KEY_" + userApiKey.slice(-10);
+        const currentUsed = parseInt(localStorage.getItem('COUNT_' + keyId) || '0');
+        localStorage.setItem('COUNT_' + keyId, (currentUsed + 1).toString());
+        return { data: dataArr };
+    } catch (e) { return { data: [] }; }
+}
 
     /* --- 5. UI 邏輯與 100% 原始攔截邏輯 --- */
     function updateDistricts() { const city = document.getElementById('city').value; document.getElementById('district').innerHTML = (cityData[city] || []).map(d => `<option value="${d}">${d}</option>`).join(''); }
@@ -300,57 +313,134 @@
         startSearch();
     }
 
-    async function startSearch() {
-        const btn = document.getElementById('search-btn');
-        btn.disabled = true; document.getElementById('loader').style.display = 'flex';
-        const now = new Date(); const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-        const userTime = `${days[now.getDay()]} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-        
-        const data = { 
-            userApiKey: getStoredKey(), city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text, district: document.getElementById('district').value, food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text, purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text, budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text, people: document.getElementById('people').value, userTime: userTime, mrtStation: document.getElementById('mrt-station').value, filters: (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "") 
-        };
+    /* --- 第三區塊：搜尋執行函數 (100% 完整還原攔截清單與邏輯) --- */
+async function startSearch() {
+    const cityKey = document.getElementById('city').value;
+    const cityName = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
+    const transport = document.getElementById('transport').value;
+    const btn = document.getElementById('search-btn');
+    const loader = document.getElementById('loader');
+    
+    // 【100% 原始數據鎖死，不准刪除】
+    const hasMRT = ['Taipei', 'NewTaipei', 'Taoyuan', 'Taichung', 'Kaohsiung'];
+    const hasHSR = ['Taipei', 'NewTaipei', 'Taoyuan', 'HsinchuCounty', 'Miaoli', 'Taichung', 'Changhua', 'Yunlin', 'ChiayiCounty', 'Tainan', 'Kaohsiung'];
+    const hasAirport = ['Taipei', 'Taoyuan', 'Taichung', 'Tainan', 'Kaohsiung', 'ChiayiCounty', 'Hualien', 'Taitung', 'Penghu', 'Kinmen', 'Lienchiang'];
+    
+    // 【交通攔截邏輯】
+    if (transport === 'mrt' && !hasMRT.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有捷運。`); return; }
+    if (transport === 'hsr' && !hasHSR.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有高鐵。`); return; }
+    if (transport === 'airport' && !hasAirport.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有機場。`); return; }
 
-        const res = await getAiRecommendation(data);
-        document.getElementById('loader').style.display = 'none'; btn.disabled = false;
-        if(!res.data || res.data.length === 0) { alert("🔍 找不到完全符合要求且真實存在的店家，請換個地點或放寬限制試試！"); return; } 
-        updateUsageDisplay(res.newRemaining); renderCards(res.data);
+    // 【金鑰檢查】
+    const key = getStoredKey();
+    if (!key) { 
+        document.getElementById('api-overlay').style.display = 'flex'; 
+        return; 
     }
+
+    // 【配額檢查】
+    const usage = getUsageInfo(key);
+    if (usage.remaining <= 0) { 
+        alert("❌ 本日 15 次配額已用完，請更換金鑰或明日再試！"); 
+        return; 
+    }
+
+    // UI 狀態切換
+    btn.disabled = true; 
+    btn.innerText = "搜尋中...";
+    loader.style.display = 'flex';
+
+    // 時間戳記處理
+    const now = new Date(); 
+    const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const userTimeString = `${days[now.getDay()]} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    // 數據封裝 (鎖死順序：人數->目的->預算)
+    const data = { 
+        userApiKey: key, 
+        city: cityName, 
+        district: document.getElementById('district').value, 
+        food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text, 
+        purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text, 
+        budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text, 
+        people: document.getElementById('people').value, 
+        userTime: userTimeString, 
+        mrtStation: document.getElementById('mrt-station').value, 
+        filters: (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + 
+                 (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "") 
+    };
+
+    // 呼叫 AI 核心
+    const res = await getAiRecommendation(data);
+    
+    // 恢復 UI 狀態
+    loader.style.display = 'none'; 
+    btn.disabled = false; 
+    btn.innerText = "開始探索美食";
+    
+    if (res.error) { 
+        alert(res.error); 
+        return; 
+    } 
+    
+    // 寧缺勿濫邏輯判斷
+    if (!res.data || res.data.length === 0) { 
+        alert("🔍 目前範圍內找不到完全符合的真實店家 (可能是距離站點太遠或目前已打烊)。請換個地點或放寬限制再試一次！"); 
+        return; 
+    } 
+    
+    // 更新顯示並渲染
+    updateUsageDisplay(res.newRemaining); 
+    renderCards(res.data);
+}
 
     /* --- 6. 卡片渲染系統 --- */
     let currentLikedList = []; let swipedCount = 0; let roundCounter = 1;
     function renderCards(restaurants) {
-        document.getElementById('main-ui').classList.add('blur-mode');
-        const stack = document.getElementById('card-stack'); stack.innerHTML = '';
-        document.getElementById('swiper-overlay').style.display = 'flex';
-        currentLikedList = []; swipedCount = 0;
-        document.getElementById('round-info').innerText = roundCounter === 1 ? "左右滑動篩選" : `第 ${roundCounter} 輪決選`;
-        restaurants.forEach((res) => {
-            const dist = userCoords.lat ? calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng) : "--";
-            const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
-            const card = document.createElement('div'); card.className = 'swipe-card';
-            card.innerHTML = `<div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div><div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-distance">📍 距離 ${dist}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div><div class="card-summary">"${res.review_summary}"</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query || (res.name + ' ' + document.getElementById('city').options[document.getElementById('city').selectedIndex].text))}" target="_blank">🔍 在 Google 地圖確認</a>`;
-            wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length);
-        });
-        stack.scrollTo(0, 0); 
-    }
+    document.getElementById('main-ui').classList.add('blur-mode');
+    const stack = document.getElementById('card-stack'); stack.innerHTML = '';
+    document.getElementById('swiper-overlay').style.display = 'flex';
+    currentLikedList = []; swipedCount = 0;
+    document.getElementById('round-info').innerText = roundCounter === 1 ? "左右滑動篩選" : `第 ${roundCounter} 輪決選`;
+    
+    restaurants.forEach((res) => {
+        const dist = userCoords.lat ? calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng) : "--";
+        const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
+        const card = document.createElement('div'); card.className = 'swipe-card';
+        card.innerHTML = `
+            <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div>
+            <div class="swipe-label label-like">LIKE</div>
+            <div class="swipe-label label-nope">NOPE</div>
+            <div class="label-chosen">🏆 最終首選</div>
+            <h3>${res.name}</h3>
+            <div class="card-badges">
+                <span class="card-badge badge-rating">⭐ ${res.rating || '4.0+'}</span>
+                <span class="card-badge badge-distance">📍 距離 ${dist}</span>
+            </div>
+            <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours || '營業中'}</span></div>
+            <div class="card-summary">"${res.review_summary || '在地好評推薦'}"</div>
+            <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query || res.name)}" target="_blank">🔍 Google 地圖確認</a>`;
+        wrapper.appendChild(card); stack.appendChild(wrapper);
+        initSwipe(card, wrapper, res, restaurants.length);
+    });
+}
 
-    function initSwipe(el, wrapper, resData, total) {
-        let sx, mx = 0; let done = false;
-        el.addEventListener('touchstart', e => { if (done || e.target.tagName === 'A') return; sx = e.touches[0].clientX; el.style.transition = 'none'; }, {passive:true});
-        el.addEventListener('touchmove', e => { if (done || !sx) return; mx = e.touches[0].clientX - sx; el.style.transform = `translateX(${mx}px) rotate(${mx/20}deg)`; el.querySelector('.label-like').style.opacity = (mx > 0 && total > 1) ? Math.min(mx/100, 1) : 0; el.querySelector('.label-nope').style.opacity = mx < 0 ? Math.min(Math.abs(mx)/100, 1) : 0; }, {passive:false});
-        el.addEventListener('touchend', () => { 
-            if (done || !sx) return; el.style.transition = '0.4s ease'; 
-            if (Math.abs(mx) > 100) { 
-                const d = mx > 0 ? 1 : -1; 
-                if (total === 1 && d === 1) { 
-                    el.style.transform = 'translateX(0) rotate(0deg)'; el.querySelector('.label-chosen').classList.add('active'); el.querySelector('.label-like').style.opacity = 0; document.getElementById('round-info').innerText = "🏆 您的最佳首選"; done = true;
-                } else { if (d === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, d, total); }
-            } else { el.style.transform = 'translateX(0) rotate(0deg)'; el.querySelector('.label-like').style.opacity = 0; el.querySelector('.label-nope').style.opacity = 0; } sx = null; 
-        });
-    }
-    function finishSwipe(el, wrapper, dir, total) { el.style.transform = `translateX(${dir * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === total) { if(currentLikedList.length > 0) { roundCounter++; renderCards(currentLikedList); } else { alert("重新探索吧！"); resetUI(); } } }, 300); }
-    function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); roundCounter = 1; refreshUsage(); }
-    window.onload = function() { refreshUsage(); updateDistricts(); };
+function initSwipe(el, wrapper, resData, total) {
+    let sx, mx = 0; let done = false;
+    const lk = el.querySelector('.label-like'); const np = el.querySelector('.label-nope');
+    el.addEventListener('touchstart', e => { if(done || e.target.tagName==='A') return; sx = e.touches[0].clientX; el.style.transition = 'none'; }, {passive:true});
+    el.addEventListener('touchmove', e => { if(done || !sx) return; mx = e.touches[0].clientX - sx; el.style.transform = `translateX(${mx}px) rotate(${mx/20}deg)`; if(lk) lk.style.opacity = (mx > 0 && total > 1) ? Math.min(mx/100, 1) : 0; if(np) np.style.opacity = mx < 0 ? Math.min(Math.abs(mx)/100, 1) : 0; }, {passive:false});
+    el.addEventListener('touchend', () => { 
+        if(done || !sx) return; el.style.transition = '0.4s ease'; 
+        if(Math.abs(mx) > 100) { 
+            const d = mx > 0 ? 1 : -1; 
+            if(total === 1 && d === 1) { 
+                el.style.transform = 'translateX(0)'; el.querySelector('.label-chosen').classList.add('active'); if(lk) lk.style.opacity = 0;
+                document.getElementById('round-info').innerText = "🏆 您的最佳首選"; done = true;
+            } else { if (d === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, d, total); }
+        } else { el.style.transform = 'translateX(0) rotate(0deg)'; if(lk) lk.style.opacity = 0; if(np) np.style.opacity = 0; } sx = null; 
+    });
+}
 </script>
 </body>
 </html>
