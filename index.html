@@ -9,18 +9,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TasteExplorer - 美味探索</title>
     <style>
-        /* 新增：座標顯示樣式 */
+/* 修改後的座標顯示樣式 */
 .location-status {
-    font-size: 0.75rem;
+    font-size: 0.8rem; /* 稍微放大一點點 */
     color: var(--accent-yellow);
-    background: rgba(0,0,0,0.3);
-    padding: 4px 12px;
+    background: rgba(255, 204, 0, 0.1); /* 增加淡淡的底色 */
+    padding: 6px 16px;
     border-radius: 20px;
-    margin-top: 8px;
-    display: flex;
+    margin: 15px 0; /* 增加上下外距，解決太貼的問題 */
+    display: inline-flex; /* 改為 inline-flex 並置中 */
     align-items: center;
-    gap: 5px;
-    border: 1px solid rgba(255, 204, 0, 0.3);
+    gap: 8px;
+    border: 1px solid rgba(255, 204, 0, 0.4);
+    backdrop-filter: blur(5px);
 }
 .location-dot {
     width: 8px;
@@ -377,11 +378,34 @@ function renderCards(restaurants) {
     document.getElementById('swiper-overlay').style.display = 'flex';
     currentLikedList = []; swipedCount = 0; cardsRemaining = restaurants.length;
     document.getElementById('round-info').innerText = "左右滑動篩選";
+
     restaurants.forEach((res) => {
+        // 新增：計算距離
+        const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
+        
         const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
         const card = document.createElement('div'); card.className = 'swipe-card';
-        card.innerHTML = `<div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div><div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div><div class="label-chosen">🏆 最終首選</div><h3>${res.name}</h3><div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-price">💰 ${res.price}</span></div><div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div><div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div><div class="card-summary">"${res.review_summary}"</div><div class="info-row" style="opacity:0.6; font-size:0.75rem;">📍 ${res.address}</div><a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ Google 地圖</a>`;
-        wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length === 1);
+        
+        // 更新：HTML 結構（新增距離標籤，移除地址文字列）
+        card.innerHTML = `
+            <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div>
+            <div class="swipe-label label-like">LIKE</div>
+            <div class="swipe-label label-nope">NOPE</div>
+            <div class="label-chosen">🏆 最終首選</div>
+            <h3>${res.name}</h3>
+            <div class="card-badges">
+                <span class="card-badge badge-rating">⭐ ${res.rating}</span>
+                <span class="card-badge badge-price">💰 ${res.price}</span>
+                <span class="card-badge badge-distance">📍 ${distStr}</span> 
+            </div>
+            <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
+            <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
+            <div class="card-summary">"${res.review_summary}"</div>
+            <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看 Google 地圖</a>
+        `;
+        wrapper.appendChild(card); 
+        stack.appendChild(wrapper); 
+        initSwipe(card, wrapper, res, restaurants.length === 1);
     });
     stack.scrollTo(0, 0); 
 }
