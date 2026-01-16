@@ -7,8 +7,35 @@
 <link rel="apple-touch-icon" href="favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>TasteExplorer - 美食探索</title>
+    <title>TasteExplorer - 美味探索</title>
     <style>
+        /* 新增：座標顯示樣式 */
+.location-status {
+    font-size: 0.75rem;
+    color: var(--accent-yellow);
+    background: rgba(0,0,0,0.3);
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+}
+.location-dot {
+    width: 8px;
+    height: 8px;
+    background: #2ecc71;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+/* 新增：距離標籤樣式 */
+.badge-distance { background: rgba(255,255,255,0.2); color: #fff; }
         /* --- 核心樣式 100% 還原，絕不改動 --- */
         :root {
             --primary-orange: #FF6600;
@@ -84,6 +111,11 @@
     <div id="bg-container"></div>
     <div class="container" id="main-ui">
         <div class="header"><div class="logo">TasteExplorer</div><div class="settings-btn" onclick="document.getElementById('api-overlay').style.display='flex'">⚙️</div><div class="tagline">探索隱藏美味 享受極致饗宴</div></div>
+        <!-- 找到 <div class="tagline">...</div> 後方加入 -->
+<div id="location-display" class="location-status">
+    <div class="location-dot"></div>
+    <span id="coords-text">正在取得 GPS 座標...</span>
+</div>
         <div class="glass-card">
             <div class="form-grid">
                 <div class="form-group"><label>📍 縣市</label><div class="input-box"><select id="city" onchange="updateDistricts(); checkTransAvailability();">
@@ -115,6 +147,44 @@
     <div id="loader"><div class="spinner"></div><p style="color: white; margin-top: 10px; font-weight: bold;">正在穿梭巷弄中...</p></div>
     <div id="swiper-overlay"><div id="round-info"></div><div class="card-stack" id="card-stack"></div><button class="close-swiper" onclick="resetUI()">← 返回調整</button></div>
     <script>
+        // 全域變數儲存使用者位置
+let userCoords = { lat: null, lng: null };
+
+// 距離計算函數 (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return "未知";
+    const R = 6371; // 地球半徑 (km)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    return distance < 1 ? `${(distance * 1000).toFixed(0)}m` : `${distance.toFixed(1)}km`;
+}
+
+// 啟動 GPS 監測
+function initLocationWatch() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                userCoords.lat = pos.coords.latitude;
+                userCoords.lng = pos.coords.longitude;
+                document.getElementById('coords-text').innerText = 
+                    `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)`;
+            },
+            (err) => {
+                document.getElementById('coords-text').innerText = "❌ 無法取得座標 (請開啟定位)";
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+    } else {
+        document.getElementById('coords-text').innerText = "❌ 瀏覽器不支援定位";
+    }
+}
+// 頁面載入後啟動
+initLocationWatch();
     /* --- 1. 核心數據 100% 移植 --- */
     const DAILY_LIMIT = 15;
     const images = ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1', 'https://images.unsplash.com/photo-1594046243098-0fceea9d451e', 'https://images.unsplash.com/photo-1563245372-f21724e3856d', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836', 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38'];
@@ -190,7 +260,19 @@ async function getAiRecommendation(requestData) {
         2. 請確保地址 (address) 欄位資訊真實且鄰近指定的交通站。
         3. 絕不回傳不符合交通距離要求的店家。
         請只回傳一個 JSON 陣列。
-        JSON 格式：[{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "reason":"", "address":"" }]`;
+        JSON 格式：[{ 
+  "name":"", 
+  "rating":"", 
+  "hours":"", 
+  "price":"", 
+  "signature":"", 
+  "review_summary":"", 
+  "reason":"", 
+  "address":"", 
+  "map_query":"",
+  "lat": 0.0, 
+  "lng": 0.0 
+}]`;
 
     try {
         const response = await fetch(url, {
