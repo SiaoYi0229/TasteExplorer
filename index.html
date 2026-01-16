@@ -38,7 +38,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
 .bg-slide.active { opacity: 0.6; }
 
-/* --- 2. API 設定視窗：確保 100% 置中 --- */
+/* --- 2. API 設定視窗 --- */
 #api-overlay { 
     position: fixed; 
     top: 0; left: 0; width: 100vw; height: 100vh; 
@@ -48,10 +48,8 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     flex-direction: column; align-items: center; justify-content: center; 
 }
 .api-card { width: 90%; max-width: 340px; background: rgba(20, 20, 20, 0.9); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); text-align: center; }
-.api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
-.api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-/* --- 3. 佈局核心：分為頂(標題組)、中(卡片組)、底(按鈕組) --- */
+/* --- 3. 佈局核心：強制的頂、中、底三段分組 --- */
 .container { 
     width: 95%; 
     max-width: 357px; 
@@ -59,30 +57,30 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 10; 
     display: flex; 
     flex-direction: column; 
-    justify-content: space-between; /* 關鍵：推開頂部、中間、底部 */
+    justify-content: space-between; /* 只有這三大塊會被拉開 */
     align-items: center; 
-    padding: 40px 0 50px 0; /* 留出頭尾呼吸空間 */
+    padding: 40px 0 50px 0; 
     position: relative; 
 }
 .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
-/* Group 1: 頂部組 (將 Logo、標語、座標綁定為一體) */
+/* Group 1: 頂部標題組 (Logo + Tagline + Location) */
 .header { 
     width: 100%; 
-    flex: 0 0 auto; 
+    flex: 0 0 auto; /* 禁止這整組在螢幕大時被自動拉長 */
     display: flex; 
     flex-direction: column; 
     align-items: center; 
     position: relative; 
 }
 
-/* Logo：移除預設 margin 確保間距精確 */
+/* Logo 無邊距 */
 .logo { font-size: 2.77rem; font-weight: 800; color: var(--primary-orange); line-height: 1.1; letter-spacing: -1px; margin: 0; }
 
-/* 標語：維持您原始設定的 6px 間距 */
+/* 標語：嚴格固定 6px */
 .tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 6px; margin-bottom: 0; }
 
-/* 座標列：同步設定為 6px 間距 (達成您要求的等距) */
+/* 座標：嚴格固定 6px (與標語等距) */
 .location-status {
     font-size: 0.68rem; 
     color: var(--accent-yellow);
@@ -98,12 +96,12 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .location-dot { width: 6px; height: 6px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
 @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
 
-/* ⚙️ 設定按鈕：對齊 TasteExplorer 標題的最右邊 */
+/* ⚙️ 設定按鈕：對齊標題最右邊 (也就是卡片的最右側邊緣) */
 .settings-btn { 
     position: absolute; 
     top: 0;
     right: 0px; 
-    height: 3rem; /* 對齊 Logo 文字高度 */
+    height: 3rem; /* 配合 Logo 高度 */
     display: flex;
     align-items: center;
     font-size: 24px; 
@@ -111,7 +109,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 50; 
 }
 
-/* Group 2: 中間組 (玻璃卡片) */
+/* Group 2: 中間選項組 (玻璃卡片) */
 .glass-card { 
     width: 100%; 
     background: rgba(20, 20, 20, 0.75); 
@@ -121,7 +119,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     flex: 0 0 auto; 
 }
 
-/* Group 3: 底部組 (操作區域) */
+/* Group 3: 底部組 (按鈕與提示) */
 .footer-action { 
     width: 100%; 
     flex: 0 0 auto; 
@@ -130,23 +128,21 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     align-items: center; 
 }
 
-/* --- 表單與其他細節 --- */
+/* --- 表單細節與功能樣式 (維持最原始設定) --- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .full-width { grid-column: span 2; }
 label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
 .input-box { background: var(--input-bg); border-radius: 10px; height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid transparent; }
 .input-box:focus-within { border-color: var(--primary-orange); }
 select { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; appearance: none; -webkit-appearance: none; cursor: pointer; }
-
 .toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
 .toggle-btn { background: var(--input-bg); height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.85rem; }
 .toggle-btn.selected { background: rgba(255,102,0,0.2); border-color: var(--primary-orange); color: var(--primary-orange); font-weight: bold; }
 #btn-open.selected { background: rgba(46,204,113,0.15); border-color: #2ecc71; color: #2ecc71; }
-
 .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); }
 .usage-hint { font-size: 0.85rem; margin-top: 10px; opacity: 0.7; color: #ffffff; font-weight: 500; }
 
-/* --- 探索卡片與介面 --- */
+/* --- 探索介面與卡片 (含距離功能樣式) --- */
 #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
 .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
 .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
