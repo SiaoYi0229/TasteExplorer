@@ -11,17 +11,17 @@
     <style>
 /* 修改後的座標顯示樣式 */
 .location-status {
-    font-size: 0.8rem; /* 稍微放大一點點 */
+    font-size: 0.75rem;
     color: var(--accent-yellow);
-    background: rgba(255, 204, 0, 0.1); /* 增加淡淡的底色 */
-    padding: 6px 16px;
+    background: rgba(0,0,0,0.3);
+    padding: 4px 12px;
     border-radius: 20px;
-    margin: 15px 0; /* 增加上下外距，解決太貼的問題 */
-    display: inline-flex; /* 改為 inline-flex 並置中 */
+    /* 修改這裡：增加上下間距，12px 是離上方標語的距離，20px 是離下方卡片的距離 */
+    margin: 12px 0 20px 0; 
+    display: flex;
     align-items: center;
-    gap: 8px;
-    border: 1px solid rgba(255, 204, 0, 0.4);
-    backdrop-filter: blur(5px);
+    gap: 5px;
+    border: 1px solid rgba(255, 204, 0, 0.3);
 }
 .location-dot {
     width: 8px;
