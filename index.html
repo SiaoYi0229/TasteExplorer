@@ -334,34 +334,72 @@
             } catch(e) { alert("搜尋異常"); } finally { loader.style.display = 'none'; btn.disabled = false; }
         }
 
-        async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
-            const prompt = `你是一位專業台灣美食導航專家。請推薦 5 間真實存在於 Google Maps 上的餐廳：
-                地點：${req.city} ${req.district}
-                需求：種類 ${req.food}，目的 ${req.purpose}，預算 ${req.budget}
-                ${req.filters}
-                
-                【絕對規則：嚴禁虛構】
-                1. 店名必須 100% 精確，不可加後綴。
-                2. 座標 (lat, lng) 必須真實存在，不可隨意編造中心點。
-                請回傳一個 JSON 陣列：
-                [{ "name":"精確店名", "rating":"4.5", "hours":"時間", "price":"價位", "signature":"必點招牌", "review_summary":"短評", "address":"地址", "lat": 25.xxx, "lng": 121.xxx }]`;
-            try {
-                const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-                const result = await response.json();
-                if(result.error) throw new Error(result.error.message);
-                let text = result.candidates[0].content.parts[0].text;
-                // 強制 JSON 提取正則
-                const jsonMatch = text.match(/\[[\s\S]*\]/);
-                if (!jsonMatch) throw new Error("Format Error");
-                const data = JSON.parse(jsonMatch[0]);
-                const keyId = "KEY_" + req.userApiKey.slice(-10);
-                let count = parseInt(localStorage.getItem('COUNT_' + keyId) || '0') + 1;
-                localStorage.setItem('COUNT_' + keyId, count.toString());
-                document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`;
-                return { data };
-            } catch (e) { return { error: "AI 目前無法連線，請檢查 API Key 或稍後再試。" }; }
-        }
+        async function getAiRecommendation(requestData) {
+    const { userApiKey, city, district, food, purpose, budget, people, filters, userTime, mrtStation } = requestData;
+    if (!userApiKey) return { error: "NO_KEY", message: "請設定 API Key！" };
+    const usage = getUsageInfo(userApiKey);
+    if (usage.remaining <= 0) return { error: "LIMIT_REACHED", message: "此 API Key 今日配額已用完！" };
+
+    // 鎖定路徑與模型
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+    
+    // 根據模式切換搜尋指令
+    const modeNote = isNearbyMode 
+        ? `【精準定位模式】中心座標為 (緯度:${userCoords.lat}, 經度:${userCoords.lng})。
+           你必須「搜尋並核對」以此點為圓心，半徑 500 公尺內真實存在的店家。`
+        : `地點：${city}${district} ${mrtStation ? '(鄰近'+mrtStation+'站)' : ''}`;
+
+    const prompt = `你是一位串接 Google Maps API 的數據分析員。
+        ${modeNote}
+        
+        【操作準則：嚴禁虛構】
+        1. 店名必須 100% 與 Google Maps 官方名稱一致，嚴禁自行添加「XX店」或組合名稱。
+        2. 經緯度 (lat, lng) 必須是該店家的真實位置，精確到小數點後 6 位（Haversine 距離計算將會驗證你的數據，超過範圍視為失敗）。
+        3. 如果範圍內找不到符合條件的真實店家，請回傳空陣列 []，絕不可自行編造。
+        4. ${timeNote} ${hiddenNote} ${transNote}
+
+        搜尋需求：種類 ${food}，目的 ${purpose}，預算 ${budget}。
+
+        請只回傳 5 間真實存在的餐廳 JSON 陣列（不包含任何解釋文字）：
+        [{ 
+          "name":"Google地圖官方正確店名", 
+          "rating":"4.5", 
+          "hours":"營業時間", 
+          "price":"價位", 
+          "signature":"推薦菜色", 
+          "review_summary":"評論總結", 
+          "address":"官方完整地址", 
+          "lat": 25.xxxxxx, 
+          "lng": 121.xxxxxx 
+        }]`;
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        
+        const result = await response.json();
+        if (result.error) return { error: result.error.message };
+        
+        let text = result.candidates[0].content.parts[0].text;
+        
+        // 更強大的 JSON 提取邏輯，防止 AI 在前後加入廢話
+        const jsonStart = text.indexOf('[');
+        const jsonEnd = text.lastIndexOf(']') + 1;
+        if (jsonStart === -1) throw new Error("AI回傳格式錯誤");
+        const parsedData = JSON.parse(text.substring(jsonStart, jsonEnd));
+        
+        const keyId = "KEY_" + userApiKey.slice(-10);
+        const newCount = (DAILY_LIMIT - usage.remaining) + 1;
+        localStorage.setItem(`COUNT_${keyId}`, newCount.toString());
+        return { data: parsedData, newRemaining: DAILY_LIMIT - newCount };
+    } catch (e) { 
+        console.error(e);
+        return { error: "AI 目前無法從地圖中找到符合的真實店家，請嘗試放寬範圍或稍後再試。" }; 
+    }
+}
 
         // --- 4. 卡片系統 100% 還原 ---
         let currentLikedList = []; let swipedCount = 0; let cardsRemaining = 0;
@@ -387,8 +425,7 @@
                     <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
                     <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
                     <div class="card-summary">"${res.review_summary}"</div>
-                    <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看 Google 地圖</a>
-                `;
+                    <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name)}" target="_blank">🗺️ 查看 Google 地圖</a>`;
                 wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length === 1);
             });
         }
