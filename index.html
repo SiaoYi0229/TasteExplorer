@@ -344,7 +344,7 @@
         }
 
         async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${req.userApiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-exp:generateContent?key=${req.userApiKey}`;
             const prompt = `你現在是 Google Maps 的資料擷取搬運工。請執行以下流程：
                 1. 搜尋：「${req.food}」，目的：「${req.purpose}」，預算：「${req.budget}」。
                 2. 位置限制：${req.district} 附近 1 公里內。
