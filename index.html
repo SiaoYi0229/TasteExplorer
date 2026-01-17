@@ -421,18 +421,66 @@ async function getAiRecommendation(req) {
         }
 
         function initSwipe(el, wrapper, resData, isLastOne) {
-            let startX, moveX = 0; let isDone = false;
-            el.addEventListener('touchstart', (e) => { if (isDone || e.target.tagName === 'A') return; startX = e.touches[0].clientX; el.style.transition = 'none'; });
-            el.addEventListener('touchmove', (e) => { if (isDone || !startX) return; moveX = e.touches[0].clientX - startX; if(Math.abs(moveX) > 10) { el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`; el.querySelector('.label-like').style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0; el.querySelector('.label-nope').style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0; } });
-            el.addEventListener('touchend', () => { 
-                if (isDone || !startX) return; el.style.transition = '0.4s ease'; 
-                if (Math.abs(moveX) > 100) { 
-                    const dir = moveX > 0 ? 1 : -1; 
-                    if (isLastOne && dir === -1) { el.style.transform = `translateX(-150%)`; setTimeout(() => resetUI(), 300); } 
-                    else if (dir === 1 && isLastOne) { el.style.transform = 'translateX(0)'; el.querySelector('.label-chosen').classList.add('active'); isDone = true; } 
-                    else { if (dir === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, dir); }
-                } else { el.style.transform = 'translateX(0) rotate(0deg)'; el.querySelector('.label-like').style.opacity = 0; el.querySelector('.label-nope').style.opacity = 0; } startX = null; 
-            });
+    let startX, moveX = 0; let isDone = false;
+    const likeLabel = el.querySelector('.label-like'); 
+    const nopeLabel = el.querySelector('.label-nope');
+
+    el.addEventListener('touchstart', (e) => { 
+        if (isDone || e.target.tagName === 'A') return; 
+        startX = e.touches[0].clientX; 
+        el.style.transition = 'none'; 
+    }, {passive: true});
+
+    el.addEventListener('touchmove', (e) => { 
+        if (isDone || !startX) return; 
+        moveX = e.touches[0].clientX - startX; 
+        if(Math.abs(moveX) > 10) { 
+            el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`; 
+            
+            // 修改點：如果是最後一張，不顯示 LIKE 標籤
+            if (isLastOne) {
+                likeLabel.style.opacity = 0; 
+                nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX) / 100, 1) : 0;
+            } else {
+                likeLabel.style.opacity = moveX > 0 ? Math.min(moveX / 100, 1) : 0; 
+                nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX) / 100, 1) : 0;
+            }
+        } 
+    }, {passive: false});
+
+    el.addEventListener('touchend', () => { 
+        if (isDone || !startX) return; 
+        el.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; 
+        
+        if (Math.abs(moveX) > 100) { 
+            const dir = moveX > 0 ? 1 : -1; 
+            if (isLastOne && dir === -1) { 
+                // 最後一張向左滑：重置
+                el.style.transform = `translateX(-150%)`; 
+                setTimeout(() => { resetUI(); }, 300); 
+            } 
+            else if (dir === 1 && isLastOne) { 
+                // 最後一張向右滑：顯示印章
+                el.style.transform = 'translateX(0) rotate(0deg)'; 
+                likeLabel.style.opacity = 0; 
+                nopeLabel.style.opacity = 0; 
+                const stamp = el.querySelector('.label-chosen');
+                if(stamp) stamp.classList.add('active'); 
+                document.getElementById('round-info').innerText = "🏆 您的最佳首選";
+                isDone = true; 
+            } 
+            else { 
+                if (dir === 1) currentLikedList.push(resData); 
+                finishSwipe(el, wrapper, dir); 
+            }
+        } else { 
+            el.style.transform = 'translateX(0) rotate(0deg)'; 
+            likeLabel.style.opacity = 0; 
+            nopeLabel.style.opacity = 0; 
+        } 
+        startX = null; 
+    });
+
         }
         function finishSwipe(el, wrapper, dir) { el.style.transform = `translateX(${dir * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === cardsRemaining) { if(currentLikedList.length > 0) renderCards(currentLikedList); else resetUI(); } }, 300); }
         function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
