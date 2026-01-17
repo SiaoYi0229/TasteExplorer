@@ -306,58 +306,105 @@
             startSearch();
         }
 
-        async function startSearch() {
-            const loader = document.getElementById('loader');
-            const btn = document.getElementById('search-btn');
-            btn.disabled = true; loader.style.display = 'flex';
-            try {
-                const now = new Date();
-                const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-                const timeStr = `${days[now.getDay()]} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-                const data = {
-                    userApiKey: getStoredKey(),
-                    city: isNearbyMode ? "使用者目前座標點" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-                    district: isNearbyMode ? `緯度:${userCoords.lat}, 經度:${userCoords.lng} (精準 500m 內)` : document.getElementById('district').value,
-                    food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
-                    purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
-                    budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
-                    people: document.getElementById('people').value,
-                    userTime: timeStr,
-                    mrtStation: isNearbyMode ? "" : document.getElementById('mrt-station').value,
-                    filters: (isNearbyMode ? "【強制地理要求：必須在座標周邊直線距離 500 公尺內】" : "") + (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "")
-                };
-                const res = await getAiRecommendation(data);
-                if(res.error) { alert(res.error); return; }
-                renderCards(res.data);
-            } catch (e) { alert("系統發生錯誤，請重新再試。"); } 
-            finally { loader.style.display = 'none'; btn.disabled = false; }
-        }
+       // 修復：搜尋執行邏輯
+async function startSearch() {
+    const loader = document.getElementById('loader');
+    const btn = document.getElementById('search-btn');
+    
+    // 防錯：如果附近模式沒座標，提示使用者
+    if (isNearbyMode && !userCoords.lat) {
+        alert("尚未取得您的 GPS 座標，請稍候或開啟定位權限。");
+        return;
+    }
 
-        async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
-            const prompt = `你是一位專業台灣美食家。請推薦 5 間真實存在於 Google Maps 上的餐廳：
-                地點：${req.city} ${req.district}
-                種類：${req.food}，目的：${req.purpose}，預算：${req.budget}
-                ${req.filters}
-                請回傳一個 JSON 陣列，店名必須精確，座標 (lat, lng) 必須真實存在於地圖上：
-                [{ "name":"", "rating":"", "hours":"", "price":"", "signature":"", "review_summary":"", "address":"", "lat": 0.0, "lng": 0.0 }]`;
-            try {
-                const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-                const result = await response.json();
-                if (result.error) throw new Error(result.error.message);
-                let text = result.candidates[0].content.parts[0].text;
-                // 強化 JSON 提取邏輯
-                const jsonMatch = text.match(/\[[\s\S]*\]/);
-                if (!jsonMatch) throw new Error("AI 回傳格式錯誤");
-                const data = JSON.parse(jsonMatch[0]);
-                const keyId = "KEY_" + req.userApiKey.slice(-10);
-                let count = parseInt(localStorage.getItem('COUNT_' + keyId) || '0') + 1;
-                localStorage.setItem('COUNT_' + keyId, count.toString());
-                document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`;
-                return { data };
-            } catch (e) { return { error: "AI 忙碌中或 API 錯誤，請稍後再試。" }; }
-        }
+    btn.disabled = true; 
+    loader.style.display = 'flex'; // 顯示轉圈圈
 
+    try {
+        const now = new Date();
+        const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+        const timeStr = `${days[now.getDay()]} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+        const data = {
+            userApiKey: getStoredKey(),
+            mode: isNearbyMode ? "NEARBY" : "REGION",
+            lat: userCoords.lat,
+            lng: userCoords.lng,
+            city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+            district: document.getElementById('district').value,
+            food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
+            purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
+            budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
+            people: document.getElementById('people').value,
+            userTime: timeStr,
+            mrtStation: isNearbyMode ? "" : document.getElementById('mrt-station').value,
+            filters: (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "")
+        };
+
+        const res = await getAiRecommendation(data);
+        if (res.error) { 
+            alert(res.error); 
+        } else if (!res.data || res.data.length === 0) {
+            alert("🔍 附近找不到符合條件的店家，請試著放寬預算或種類。");
+        } else {
+            renderCards(res.data);
+        }
+    } catch (e) { 
+        console.error(e);
+        alert("搜尋發生異常，請檢查網路或 API Key。"); 
+    } finally {
+        loader.style.display = 'none'; // 隱藏轉圈圈
+        btn.disabled = false;
+    }
+}
+
+// 修復：加強 Prompt 嚴禁虛構店家，並精準鎖定 500m 座標
+async function getAiRecommendation(req) {
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${req.userApiKey}`;
+    
+    // 強力指令：根據模式切換搜尋重點
+    let modePrompt = req.mode === "NEARBY" 
+        ? `【絕對指令：精準定位搜尋】以座標 (緯度:${req.lat}, 經度:${req.lng}) 為圓心，搜尋半徑 500 公尺內真實存在的店家。` 
+        : `搜尋地點為：${req.city}${req.district} ${req.mrtStation ? '(鄰近' + req.mrtStation + '站)' : ''}。`;
+
+    const prompt = `你是一位專業的台灣美食地圖專家。
+        ${modePrompt}
+        想吃：${req.food}，目的：${req.purpose}，預算：${req.budget}，其他：${req.filters}
+        
+        【行為準則：嚴禁虛構】
+        1. 推薦的店家必須在 Google Maps 上真實存在。
+        2. 經緯度 (lat, lng) 必須是該店的「精確位置」，這會被用來計算與使用者的距離。
+        3. 如果附近模式下找不到 5 間，寧可只給 1-2 間真實的，也絕不虛構。
+        
+        請回傳純 JSON 陣列格式：
+        [{ "name":"精確店名", "rating":"評分", "hours":"今日營業時間", "price":"人均價位", "signature":"必點招牌菜", "review_summary":"一句話短評", "address":"完整地址", "lat": 25.xxx, "lng": 121.xxx }]`;
+
+    try {
+        const response = await fetch(url, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) 
+        });
+        const result = await response.json();
+        if (result.error) throw new Error(result.error.message);
+        
+        let text = result.candidates[0].content.parts[0].text;
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error("AI 回傳格式不正確");
+        
+        const data = JSON.parse(jsonMatch[0]);
+        
+        // 更新剩餘次數邏輯
+        const keyId = "KEY_" + req.userApiKey.slice(-10);
+        let count = parseInt(localStorage.getItem('COUNT_' + keyId) || '0') + 1;
+        localStorage.setItem('COUNT_' + keyId, count.toString());
+        document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`;
+        
+        return { data };
+    } catch (e) { 
+        return { error: "AI 目前無法回應或格式錯誤，請稍後再試。" }; 
+    }
+}
         let currentLikedList = []; let swipedCount = 0; let cardsRemaining = 0;
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
