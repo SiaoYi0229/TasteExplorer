@@ -143,6 +143,7 @@
     </div>
 
     <div id="bg-container"></div>
+    <div id="loader"><div class="spinner"></div><p style="color:white; margin-top:15px; font-weight:bold;">AI 正在搜尋真實店家...</p></div>
 
     <div class="container" id="main-ui">
         <div class="header">
@@ -194,6 +195,11 @@
             <button id="search-btn" class="cta-button" onclick="handleSearchClick()">開始探索美食</button>
             <div id="usage-text" class="usage-hint">今日剩餘次數：-- 次</div>
         </div>
+    </div>
+
+    <!-- 推薦系統 Overlay -->
+    <div id="swiper-overlay">
+        <div id="card-stack" class="card-stack"></div>
     </div>
 
     <script>
@@ -329,15 +335,17 @@
 
                 const data = {
                     userApiKey: getStoredKey(),
-                    city: isNearbyMode ? "精確GPS中心點" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-                    district: isNearbyMode ? `中心(Lat:${userCoords.lat}, Lng:${userCoords.lng}) 半徑1km` : document.getElementById('district').value,
+                    city: isNearbyMode ? "GPS精確定位模式" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    district: isNearbyMode ? `經緯度(${userCoords.lat}, ${userCoords.lng})` : document.getElementById('district').value,
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
                     budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
                     userTime: timeStr,
                     mrtStation: isNearbyMode ? "" : mrtStation,
                     isHidden: isHidden,
-                    isOpen: isOpen
+                    isOpen: isOpen,
+                    lat: userCoords.lat,
+                    lng: userCoords.lng
                 };
                 const res = await getAiRecommendation(data);
                 if(res.error) alert(res.error); 
@@ -349,22 +357,36 @@
         async function getAiRecommendation(req) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
             
-            const radius = isNearbyMode ? "1 公里" : "500 公尺";
-            const distanceRule = (isNearbyMode || req.mrtStation) 
-                ? `【絕對指令：搬運工模式】中心點為 ${req.district}。僅限搜尋半徑「${radius}」內的真實店家。禁止向外搜尋。若範圍內無 4.5 星店，必須降級找 3.0 星真實店。`
-                : `地點任務：${req.city}${req.district}。`;
+            // --- 優化後的精確 Prompt ---
+            let locationContext = "";
+            if (isNearbyMode) {
+                locationContext = `【環境偵測】：用戶目前位於 GPS 座標 (${req.lat}, ${req.lng})。
+                第一步：請根據此座標識別出該地屬於哪個縣市、行政區，以及最近的捷運站或知名地標。
+                第二步：以該點為中心，搜尋真實存在的店家，範圍必須在半徑 1 公里內。`;
+            } else {
+                locationContext = `【地區任務】：${req.city}${req.district}${req.mrtStation ? '，並靠近 ' + req.mrtStation + ' 站' : ''}。`;
+            }
 
             let filterNotes = "";
-            if (req.isHidden) filterNotes += "【隱藏版：避開評論數 >2000 的連鎖大店，找私房店】";
-            if (req.isOpen) filterNotes += `【營業中：現在是 ${req.userTime}。核對地圖營業時間，休息中絕對禁薦】`;
+            if (req.isHidden) filterNotes += "【隱藏版模式】：避開評論數過多(>3000)的連鎖大店，優先尋找在地人才知道的私房名店。";
+            if (req.isOpen) filterNotes += `【實時營業校對】：現在是 ${req.userTime}。請嚴格核對地圖營業時間，已打烊的店家絕對不可出現在名單中。`;
 
-            const prompt = `你現在是 Google Maps 數據搬運工，請執行三步搜尋邏輯：
-                1. 分類：種類「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」。
-                2. 範圍：${distanceRule}
-                3. 真實性：店名必須 100% 精確。若是連鎖店，不可刪除分店名（例：星巴克 - XX門市）。
+            const prompt = `你現在是 Google Maps 的資料同步代理機器人。
+                ${locationContext}
+                
+                搜尋條件：
+                1. 種類：${req.food}
+                2. 目的：${req.purpose}
+                3. 預算：${req.budget}
                 4. ${filterNotes}
-                只回傳 JSON 陣列格式，嚴禁任何解釋文字：
-                [{ "name":"官方店名", "rating":"4.5", "hours":"時間", "price":"$200", "signature":"招牌", "review_summary":"短評", "address":"地址", "lat": 25.xxx, "lng": 121.xxx }]`;
+
+                【核心指令：真實性協議】
+                - 店名必須 100% 真實。禁止虛構店名，禁止自行簡化或增加分店名。
+                - 請確保回傳的店家在 Google 地圖上擁有真實的評論紀錄。
+                - 必須提供該店精確的 Lat (緯度) 與 Lng (經度)，以便計算與用戶的距離。
+
+                只回傳 JSON 陣列格式，禁止任何額外文字：
+                [{ "name":"精確店名", "rating":"4.5", "hours":"營業時間", "price":"人均預算", "signature":"推薦菜色", "review_summary":"一句話精簡評論", "address":"完整地址", "lat": 緯度數字, "lng": 經度數字 }]`;
 
             try {
                 const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
@@ -382,10 +404,10 @@
                     document.getElementById('usage-text').innerText = `今日剩餘次數：${15 - count} 次`;
                 }
                 return { data };
-            } catch (e) { return { error: "AI 目前忙碌或半徑範圍內查無符合的真實店家。" }; }
+            } catch (e) { return { error: "AI 目前忙碌或半徑範圍內查無符合的真實店家。請稍後再試或調整條件。" }; }
         }
 
-        // --- 4. UI 渲染 100% 還原原本卡片系統 ---
+        // --- 4. UI 渲染 100% 還原卡片系統 ---
         let currentLikedList = []; let swipedCount = 0; let cardsRemaining = 0;
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
@@ -414,7 +436,6 @@
                 wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length === 1);
             });
             
-            // 補上返回按鈕
             const closeBtn = document.createElement('button');
             closeBtn.className = 'close-swiper';
             closeBtn.innerText = '← 返回調整';
@@ -431,7 +452,6 @@
                 if (isDone || !startX) return; moveX = e.touches[0].clientX - startX; 
                 if(Math.abs(moveX) > 10) { 
                     el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`; 
-                    // 滑動中 100% 顯示 LIKE
                     likeLabel.style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0;
                     nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0;
                 }
@@ -442,7 +462,6 @@
                     const dir = moveX > 0 ? 1 : -1; 
                     if (isLastOne && dir === -1) { el.style.transform = `translateX(-150%)`; setTimeout(() => resetUI(), 300); } 
                     else if (dir === 1 && isLastOne) { 
-                        // 最後一張：回彈 -> LIKE 消失 -> 印章蓋上
                         el.style.transform = 'translateX(0) rotate(0deg)'; 
                         likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0;
                         el.querySelector('.label-chosen').classList.add('active'); isDone = true; 
