@@ -7,7 +7,7 @@
     <link rel="icon" href="favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="favicon.png">
     <style>
-        /* --- 1. 核心樣式：100% 還原第一份配色 --- */
+        /* --- 1. 核心樣式：100% 還原配色 --- */
         :root {
             --primary-orange: #FF6600;
             --glass-bg: rgba(25, 25, 25, 0.85);
@@ -115,14 +115,18 @@
         .card-summary { font-size: 0.88rem; font-style: italic; opacity: 0.85; border-left: 2px solid var(--primary-orange); padding-left: 10px; margin: 5px 0; }
         .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; }
         
-        .close-swiper { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 40px; border-radius: 50px; cursor: pointer; font-weight: bold; backdrop-filter: blur(10px); margin: 20px 0 40px 0; flex-shrink: 0; }
+        .close-swiper { 
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); 
+            color: #fff; padding: 12px 40px; border-radius: 50px; cursor: pointer; 
+            font-weight: bold; backdrop-filter: blur(10px); margin: 20px 0 40px 0; flex-shrink: 0;
+        }
 
         #loader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top: 5px solid var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite !important; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
+<body touch-action="none">
     <div id="api-overlay">
         <div class="api-card">
             <h2>🔑 API 設定</h2>
@@ -192,7 +196,7 @@
     <div id="swiper-overlay"><div id="card-stack" class="card-stack"></div></div>
 
     <script>
-        // --- 核心數據與交通 100% 還原自第一份代碼 ---
+        // --- 1. 核心數據與交通 100% 還原自第一份 ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
@@ -216,7 +220,8 @@
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return (R * c < 1) ? `${(R * c * 1000).toFixed(0)}m` : `${(R * c).toFixed(1)}km`;
+            const d = R * c;
+            return d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`;
         }
 
         function initLocationWatch() {
@@ -224,7 +229,7 @@
                 navigator.geolocation.watchPosition((pos) => {
                     userCoords.lat = pos.coords.latitude; userCoords.lng = pos.coords.longitude;
                     if (!isNearbyMode) document.getElementById('coords-text').innerText = `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)`;
-                }, () => {}, { enableHighAccuracy: true });
+                }, (err) => {}, { enableHighAccuracy: true });
             }
         }
 
@@ -280,7 +285,7 @@
             }
         }
 
-        // --- 3. 搜尋邏輯：Grounding with Google Search ---
+        // --- 3. API 核心與 Grounding 功能 ---
         function getStoredKey() { return localStorage.getItem('EXPLORER_FINAL_SECURE_KEY') || ""; }
         function saveApiKey() { const k = document.getElementById('api-key-input').value.trim(); if(k) { localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', k); location.reload(); } }
 
@@ -292,9 +297,8 @@
         }
 
         async function handleSearchClick() {
-            const key = getStoredKey();
-            if (!key) { document.getElementById('api-overlay').style.display = 'flex'; return; }
-            if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日次數已滿，請明日再來。"); return; }
+            if (!getStoredKey()) { document.getElementById('api-overlay').style.display = 'flex'; return; }
+            if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日探索次數已達 15 次上限。"); return; }
 
             if (!isNearbyMode) {
                 const cityKey = document.getElementById('city').value;
@@ -318,17 +322,18 @@
             try {
                 const now = new Date();
                 const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+                
                 const data = {
                     userApiKey: getStoredKey(),
-                    city: isNearbyMode ? "精確GPS中心" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-                    district: isNearbyMode ? `座標(${userCoords.lat}, ${userCoords.lng})` : document.getElementById('district').value,
+                    city: isNearbyMode ? "精確座標中心" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    district: isNearbyMode ? `GPS(${userCoords.lat}, ${userCoords.lng})` : document.getElementById('district').value,
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
                     budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
-                    userTime: timeStr,
                     mrtStation: isNearbyMode ? "" : (document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : ""),
                     isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
                     isOpen: document.getElementById('btn-open').classList.contains('selected'),
+                    userTime: timeStr,
                     lat: userCoords.lat, lng: userCoords.lng
                 };
 
@@ -337,27 +342,40 @@
                 else if(res.data && res.data.length > 0) {
                     const keyId = "KEY_" + data.userApiKey.slice(-10);
                     localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
-                    updateUsageDisplay();
                     renderCards(res.data); 
-                } else alert("🔍 此範圍內無真實店家資料。");
-            } catch(e) { alert("搜尋發生異常。"); } finally { loader.style.display = 'none'; btn.disabled = false; }
+                } else alert("🔍 查無符合條件的真實店家。");
+            } catch(e) { alert("搜尋異常"); } finally { loader.style.display = 'none'; btn.disabled = false; }
         }
 
         async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-exp:generateContent?key=${req.userApiKey}`;
-            const prompt = `你現在是 Google Maps 的資料擷取搬運工。請執行以下流程：
-                1. 搜尋：「${req.food}」，目的：「${req.purpose}」，預算：「${req.budget}」。
-                2. 位置限制：${req.district} 附近 1 公里內。
-                3. 【擷取協議】：必須使用 Google Search 工具搜尋該區域，擷取「官方店名」。忘記你原本腦中的名稱。
-                4. 【二次對比】：以此「官方店名」重新搜尋，確認座標 (lat, lng) 精確到小點後 5 位，且「非歇業」。
-                5. 現在是 ${req.userTime}，${req.isOpen ? '僅回傳現在營業中的店。' : ''}
-                
-                只回傳 JSON 格式，不准解釋：
-                [{ "name":"官方真實店名", "rating":"評分", "hours":"營業時間", "price":"預算", "signature":"推薦", "review_summary":"短評", "address":"地址", "lat": 緯度, "lng": 經度 }]`;
+            // 模型鐵則：gemini-2.5-flash
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
+            
+            // 距離限制邏輯強化
+            let distConstraint = "";
+            if (isNearbyMode) {
+                distConstraint = `必須在座標 (${req.lat}, ${req.lng}) 半徑 1 公里內。`;
+            } else if (req.mrtStation) {
+                distConstraint = `必須在「${req.mrtStation}」步行 10 分鐘距離內。`;
+            } else {
+                distConstraint = `必須在「${req.city}${req.district}」區域內。`;
+            }
+
+            const prompt = `彙整搜尋條件：種類「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」。
+                【聯網擷取正名協定】：
+                1. 使用 Google Search 搜尋真實存在的店家。
+                2. 擷取地圖官方標籤上的正確店名。忘記原先拼湊的名稱。
+                3. 位置限制：${distConstraint}。
+                4. 核對：必須「非歇業」且「現在營業中(現在:${req.userTime})」。
+                5. 必須提供官方標註的 lat/lng (精確到小數點後 5 位) 與人均預算。
+                ${req.isHidden ? '6. 【探索巷弄模式】：避開連鎖店，找低調私房名店。' : ''}
+
+                只回傳 JSON 陣列格式：
+                [{ "name":"擷取到的官方店名", "rating":"評分", "hours":"營業時間", "price":"人均預算", "signature":"推薦", "review_summary":"短評", "address":"真實地址", "lat": 緯度數字, "lng": 經度數字 }]`;
 
             const requestBody = {
                 contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search_retrieval: {} }] // 啟用 Google 搜尋 Grounding
+                tools: [{ google_search_retrieval: {} }] // 啟用聯網功能
             };
 
             try {
@@ -367,22 +385,14 @@
                 const jsonMatch = text.match(/\[[\s\S]*\]/);
                 if (!jsonMatch) throw new Error();
                 return { data: JSON.parse(jsonMatch[0]) };
-            } catch (e) { return { error: "AI 目前忙碌或資料解析失敗。" }; }
+            } catch (e) { return { error: "AI 目前忙碌或資料校對失敗。" }; }
         }
 
-        function updateUsageDisplay() {
-            const count = getUsageCount();
-            document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`;
-            if (count >= DAILY_LIMIT) { document.getElementById('search-btn').disabled = true; document.getElementById('search-btn').innerText = "今日次數已滿"; }
-        }
-
-        // --- 4. UI 渲染 100% 還原 ---
-        let currentLikedList = []; let swipedCount = 0; let cardsRemaining = 0;
+        // --- 4. UI 渲染 (原始版) ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
             const stack = document.getElementById('card-stack'); stack.innerHTML = '';
             document.getElementById('swiper-overlay').style.display = 'flex';
-            currentLikedList = []; swipedCount = 0; cardsRemaining = restaurants.length;
             restaurants.forEach((res) => {
                 const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
                 const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
@@ -406,42 +416,45 @@
             });
             const closeBtn = document.createElement('button');
             closeBtn.className = 'close-swiper'; closeBtn.innerText = '← 返回調整'; closeBtn.onclick = resetUI;
-            stack.appendChild(closeBtn); stack.scrollTo(0, 0); 
+            stack.appendChild(closeBtn); 
         }
 
         function initSwipe(el, wrapper, resData, isLastOne) {
-            let startX, moveX = 0; let isDone = false;
+            let startX, moveX = 0;
             const likeLabel = el.querySelector('.label-like'); const nopeLabel = el.querySelector('.label-nope');
-            el.addEventListener('touchstart', (e) => { if (isDone || e.target.tagName === 'A') return; startX = e.touches[0].clientX; el.style.transition = 'none'; });
+            el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; el.style.transition = 'none'; });
             el.addEventListener('touchmove', (e) => { 
-                if (isDone || !startX) return; moveX = e.touches[0].clientX - startX; 
-                if(Math.abs(moveX) > 10) { 
-                    el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`; 
+                moveX = e.touches[0].clientX - startX;
+                if(Math.abs(moveX) > 10) {
+                    el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`;
                     likeLabel.style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0;
                     nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0;
                 }
             });
             el.addEventListener('touchend', () => { 
-                if (isDone || !startX) return; el.style.transition = '0.4s ease'; 
+                el.style.transition = '0.4s ease'; 
                 if (Math.abs(moveX) > 100) { 
-                    const dir = moveX > 0 ? 1 : -1; 
-                    if (isLastOne && dir === -1) { el.style.transform = `translateX(-150%)`; setTimeout(() => resetUI(), 300); } 
-                    else if (dir === 1 && isLastOne) { 
+                    const dir = moveX > 0 ? 1 : -1;
+                    if (isLastOne && dir === 1) { 
                         el.style.transform = 'translateX(0) rotate(0deg)'; 
-                        likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0;
-                        el.querySelector('.label-chosen').classList.add('active'); isDone = true; 
-                    } else { if (dir === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, dir); }
-                } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; } startX = null; 
+                        likeLabel.style.opacity = 0; el.querySelector('.label-chosen').classList.add('active'); 
+                    } else { el.style.transform = `translateX(${dir * 150}%)`; setTimeout(() => wrapper.remove(), 300); }
+                } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; }
             });
         }
-        function finishSwipe(el, wrapper, dir) { el.style.transform = `translateX(${dir * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === cardsRemaining) { if(currentLikedList.length > 0) renderCards(currentLikedList); else resetUI(); } }, 300); }
+
         function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
 
         window.onload = () => {
-            initLocationWatch(); updateDistricts(); updateUsageDisplay();
+            initLocationWatch(); updateDistricts();
             const bg = document.getElementById('bg-container'); 
             images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i===0?' active':''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(div); });
-            let slideIdx = 0; setInterval(() => { const s = document.querySelectorAll('.bg-slide'); s[slideIdx].classList.remove('active'); slideIdx = (slideIdx+1)%s.length; s[slideIdx].classList.add('active'); }, 6000);
+            setInterval(() => { 
+                let slides = document.querySelectorAll('.bg-slide');
+                let active = document.querySelector('.bg-slide.active');
+                let next = active.nextElementSibling || slides[0];
+                active.classList.remove('active'); next.classList.add('active');
+            }, 6000);
         };
     </script>
 </body>
