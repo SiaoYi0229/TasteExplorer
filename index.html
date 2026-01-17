@@ -7,7 +7,7 @@
     <link rel="icon" href="favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="favicon.png">
     <style>
-        /* --- 1. 核心樣式：100% 還原配色 --- */
+        /* --- 1. 核心樣式：100% 原始配色與排版 --- */
         :root {
             --primary-orange: #FF6600;
             --glass-bg: rgba(25, 25, 25, 0.85);
@@ -38,13 +38,12 @@
         .api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
         .api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-        /* --- 3. 佈局核心：三段式分組排版 (修正跳動問題) --- */
+        /* --- 3. 佈局核心：三段式平均分配 --- */
         .container { 
             width: 95%; max-width: 357px; height: 100dvh; z-index: 10; 
             display: flex; flex-direction: column; 
-            justify-content: space-evenly; /* 回歸平均分配 */
+            justify-content: space-evenly; 
             align-items: center; padding: 10px 0; position: relative; 
-            overflow: hidden; /* 確保無捲軸 */
         }
         .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
@@ -53,11 +52,10 @@
         .tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 6px; }
         .settings-btn { position: absolute; top: 0; right: 0; height: 3rem; display: flex; align-items: center; font-size: 24px; cursor: pointer; z-index: 50; padding: 0 5px; }
 
-        /* --- 4. 玻璃卡片：座標按鈕 100% 在內 --- */
         .glass-card { 
             width: 100%; background: rgba(20, 20, 20, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
             border-radius: 24px; padding: 18px; border: 1px solid var(--glass-border); 
-            flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; /* 縮減間距以適應新選單 */
+            flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
@@ -92,7 +90,7 @@
         .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); transition: 0.3s; }
         .usage-hint { font-size: 0.85rem; margin-top: 25px; opacity: 0.7; color: #ffffff; font-weight: 500; }
 
-        /* --- 5. 推薦卡片滑動系統 100% 還原 --- */
+        /* --- 4. 推薦卡片滑動系統 --- */
         #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
         .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
         .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
@@ -123,6 +121,7 @@
             font-weight: bold; backdrop-filter: blur(10px); margin: 20px 0 40px 0; flex-shrink: 0;
         }
 
+        /* 載入動畫旋轉 */
         #loader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top: 5px solid var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -141,7 +140,7 @@
     </div>
 
     <div id="bg-container"></div>
-    <div id="loader"><div class="spinner"></div><p style="color:white; margin-top:15px; font-weight:bold;">AI 正在搜尋真實店家...</p></div>
+    <div id="loader"><div class="spinner"></div></div>
 
     <div class="container" id="main-ui">
         <div class="header">
@@ -195,15 +194,19 @@
         </div>
     </div>
 
+    <div id="swiper-overlay">
+        <div id="card-stack" class="card-stack"></div>
+    </div>
+
     <script>
-        // --- 1. 核心數據與交通 100% 保留 ---
+        // --- 核心數據 (原始版) ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
         const images = ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1', 'https://images.unsplash.com/photo-1594046243098-0fceea9d451e', 'https://images.unsplash.com/photo-1563245372-f21724e3856d', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836', 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38'];
 
         const cityData = { 'Taipei': ['全區', '中正區', '大同區', '中山區', '松山區', '大安區', '萬華區', '信義區', '士林區', '北投區', '內湖區', '南港區', '文山區'], 'NewTaipei': ['全區', '板橋區', '三重區', '中和區', '永和區', '新莊區', '新店區', '土城區', '蘆洲區', '樹林區', '鶯歌區', '三峽區', '淡水區', '汐止區', '瑞芳區', '五股區', '泰山區', '林口區', '深坑區', '石碇區', '坪林區', '三芝區', '石門區', '八里區', '平溪區', '雙溪區', '貢寮區', '金山區', '萬里區', '烏來區'], 'Keelung': ['全區', '仁愛區', '信義區', '中正區', '中山區', '安樂區', '暖暖區', '七堵區'], 'Taoyuan': ['全區', '桃園區', '中壢區', '平鎮區', '八德區', '楊梅區', '蘆竹區', '大溪區', '龍潭區', '龜山區', '大園區', '觀音區', '新屋區', '復興區'], 'HsinchuCity': ['全區', '東區', '北區', '香山區'], 'HsinchuCounty': ['全區', '竹北市', '竹東鎮', '新埔鎮', '關西鎮', '湖口鄉', '新豐鄉', '峨眉鄉', '寶山鄉', '北埔鄉', '橫山鄉', '芎林鄉', '尖石鄉', '五峰鄉'], 'Yilan': ['全區', '宜蘭市', '羅東鎮', '蘇澳鎮', '頭城鎮', '礁溪鄉', '壯圍鄉', '員山鄉', '冬山鄉', '五結鄉', '三星鄉', '大同鄉', '南澳鄉'], 'Miaoli': ['全區', '苗栗市', '頭份市', '竹南鎮', '後龍鎮', '通霄鎮', '苑裡鎮', '卓蘭鎮', '造橋鄉', '西湖鄉', '頭屋鄉', '公館鄉', '銅鑼鄉', '三義鄉', '大湖鄉', '獅潭鄉', '三灣鄉', '南庄鄉', '泰安鄉'], 'Taichung': ['全區', '中區', '東區', '南區', '西區', '北區', '北屯區', '西屯區', '南屯區', '太平區', '大里區', '霧峰區', '烏日區', '豐原區', '後里區', '石岡區', '東勢區', '和平區', '新社區', '潭子區', '大雅區', '神岡區', '大肚區', '龍井區', '梧棲區', '清水區', '大甲區', '外埔區', '大安區'], 'Changhua': ['全區', '彰化市', '員林市', '和美鎮', '鹿港鎮', '溪湖鎮', '二林鎮', '田中鎮', '北斗鎮', '花壇鄉', '芬園鄉', '大村鄉', '永靖鄉', '伸港鄉', '線西鄉', '福興鄉', '秀水鄉', '埔心鄉', '埔鹽鄉', '大城鄉', '芳苑鄉', '竹塘鄉', '社頭鄉', '二水鄉', '溪州鄉', '田尾鄉', '埤頭鄉'], 'Nantou': ['全區', '南投市', '埔里鎮', '草屯鎮', '竹山鎮', '集集鎮', '名間鄉', '鹿谷鄉', '中寮鄉', '魚池鄉', '國姓鄉', '水里鄉', '信義鄉', '仁愛鄉'], 'Yunlin': ['全區', '斗六市', '斗南鎮', '虎尾鎮', '西螺鎮', '土庫鎮', '北港鎮', '古坑鄉', '大埤鄉', '莿桐鄉', '林內鄉', '二崙鄉', '崙背鄉', '麥寮鄉', '東勢鄉', '褒忠鄉', '台西鄉', '元長鄉', '四湖鄉', '口湖鄉', '水林鄉'], 'ChiayiCity': ['全區', '東區', '西區'], 'ChiayiCounty': ['全區', '太保市', '朴子市', '布袋鎮', '大林鎮', '民雄鄉', '溪口鄉', '新港鄉', '六腳鄉', '東石鄉', '義竹鄉', '鹿草鄉', '水上鄉', '中埔鄉', '竹崎鄉', '梅山鄉', '番路鄉', '大埔鄉', '阿里山鄉'], 'Tainan': ['全區', '中西區', '東區', '南區', '北區', '安平區', '安南區', '永康區', '歸仁區', '新化區', '玉井區', '仁德區', '關廟區', '官田區', '麻豆區', '佳里區', '新營區', '善化區'], 'Kaohsiung': ['全區', '楠梓區', '左營區', '鼓山區', '三民區', '鹽埕區', '前金區', '新興區', '苓雅區', '前鎮區', '旗津區', '小港區', '鳳山區', '大寮區', '鳥松區', '林園區', '仁武區', '大樹區', '大社區', '岡山區', '路竹區', '旗山區', '美濃區'], 'Pingtung': ['全區', '屏東市', '潮州鎮', '東港鎮', '恆春鎮', '萬丹鄉', '長治鄉', '里港鄉', '內埔鄉', '枋寮鄉', '車城鄉'], 'Hualien': ['全區', '花蓮市', '鳳林鎮', '玉里鎮', '新城鄉', '吉安鄉', '壽豐鄉', '光復鄉', '瑞穗鄉'], 'Taitung': ['全區', '台東市', '成功鎮', '關山鎮', '卑南鄉', '鹿野鄉', '池上鄉', '綠島鄉', '蘭嶼鄉'], 'Penghu': ['全區', '馬公市', '湖西鄉', '白沙鄉', '西嶼鄉'], 'Kinmen': ['全區', '金城鎮', '金湖鎮', '金沙鎮', '金寧鄉'], 'Lienchiang': ['全區', '南竿鄉', '北竿鄉', '莒光鄉', '東引鄉'] };
-        const mrtLinesTaipei = { '板南線 (BL)': ['龍山寺', '西門', '台北車站', '善導寺', '忠孝新生', '忠孝復興', '忠孝敦化', '國父紀念館', '市政府', '永春', '後山埤', '昆陽', '南港', '南港展覽館'], '淡水信義線 (R)': ['象山', '台北101/世貿', '信義安和', '大安', '大安森林公園', '東門', '中正紀念堂', '台大醫院', '台北車站', '中山', '雙連', '民權西路', '圓山', '劍潭', '士林', '芝山', '明德', '石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡', '竹圍', '紅樹林', '淡水'], '松山新店線 (G)': ['景美', '萬隆', '公館', '台電大樓', '古亭', '中正紀念堂', '小南門', '西門', '北門', '中山', '松江南京', '南京復興', '台北小巨蛋', '南京三三民', '松山'], '中和新蘆線 (O)': ['古亭', '東門', '忠孝新生', '松江南京', '行天宮', '中山國小', '民權西路', '大橋頭'], '文湖線 (BR)': ['動物園', '木柵', '萬芳社區', '萬芳醫院', '辛亥', '麟光', '六張犁', '科技大樓', '大安', '忠孝復興', '南京復興', '中山國中', '松山機場', '大直', '劍南路', '西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖', '南港軟體園區', '南港展覽館'] };
+        const mrtLinesTaipei = { '板南線 (BL)': ['龍山寺', '西門', '台北車站', '善導寺', '忠孝新生', '忠孝復興', '忠孝敦化', '國父紀念館', '市政府', '永春', '後山埤', '昆陽', '南港', '南港展覽館'], '淡水信義線 (R)': ['象山', '台北101/世貿', '信義安和', '大安', '大安森林公園', '東門', '中正紀念堂', '台大醫院', '台北車站', '中山', '雙連', '民權西路', '圓山', '劍潭', '士林', '芝山', '明德', '石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡', '竹圍', '紅樹林', '淡水'], '松山新店線 (G)': ['景美', '萬隆', '公館', '台電大樓', '古亭', '中正紀念堂', '小南門', '西門', '北門', '中山', '松江南京', '南京復興', '台北小巨蛋', '南京三民', '松山'], '中和新蘆線 (O)': ['古亭', '東門', '忠孝新生', '松江南京', '行天宮', '中山國小', '民權西路', '大橋頭'], '文湖線 (BR)': ['動物園', '木柵', '萬芳社區', '萬芳醫院', '辛亥', '麟光', '六張犁', '科技大樓', '大安', '忠孝復興', '南京復興', '中山國中', '松山機場', '大直', '劍南路', '西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖', '南港軟體園區', '南港展覽館'] };
         const mrtLinesNewTaipei = { '板南線 (BL)': ['頂埔', '永寧', '土城', '海山', '亞東醫院', '府中', '板橋', '新埔', '江子翠'], '淡水信義線 (R)': ['竹圍', '紅樹林', '淡水'], '松山新店線 (G)': ['新店', '新店區公所', '七張', '大坪林'], '中和新蘆線 (O)': ['南勢角', '景安', '永安市場', '頂溪', '三重國小', '三和國中', '徐匯中學', '三民高中', '蘆洲', '台北橋', '菜寮', '三重', '先嗇宮', '頭前庄', '新莊', '輔大', '丹鳳', '迴龍'], '環狀線 (Y)': ['大坪林', '十四張', '秀朗橋', '景平', '景安', '中和', '橋和', '中原', '板新', '板橋', '新埔民生', '頭前庄', '幸福', '新北產業園區'] };
         const mrtLinesTaoyuan = { '機場捷運 (A)': ['台北車站', '三重', '機場第一航廈', '機場第二航廈', '高鐵桃園站', '老街溪'] };
         const mrtLinesTaichung = { '綠線': ['北屯總站', '松竹', '市政府', '大慶', '高鐵台中站'] };
@@ -292,7 +295,7 @@
             }
         }
 
-        // --- 3. 搜尋與 API 邏輯 (模型：gemini-2.5-flash) ---
+        // --- 3. 搜尋與 API 邏輯 (gemini-2.5-flash) ---
         function getStoredKey() { return localStorage.getItem('EXPLORER_FINAL_SECURE_KEY') || ""; }
         function saveApiKey() { const k = document.getElementById('api-key-input').value.trim(); if(k) { localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', k); document.getElementById('api-overlay').style.display='none'; location.reload(); } }
 
@@ -310,58 +313,50 @@
                 const now = new Date();
                 const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
                 const timeStr = `${days[now.getDay()]} ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-                
-                const isHidden = document.getElementById('btn-hidden').classList.contains('selected');
-                const isOpen = document.getElementById('btn-open').classList.contains('selected');
-                const mrtStation = document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : "";
-
                 const data = {
                     userApiKey: getStoredKey(),
-                    city: isNearbyMode ? "GPS精確模式" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    city: isNearbyMode ? "GPS模式" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
                     district: isNearbyMode ? `座標(${userCoords.lat}, ${userCoords.lng})` : document.getElementById('district').value,
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
                     budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
                     userTime: timeStr,
-                    mrtStation: isNearbyMode ? "" : mrtStation,
-                    isHidden: isHidden,
-                    isOpen: isOpen,
+                    mrtStation: isNearbyMode ? "" : (document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : ""),
+                    isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
+                    isOpen: document.getElementById('btn-open').classList.contains('selected'),
                     lat: userCoords.lat,
                     lng: userCoords.lng
                 };
                 const res = await getAiRecommendation(data);
                 if(res.error) alert(res.error); 
                 else if(res.data && res.data.length > 0) renderCards(res.data); 
-                else alert("🔍 此範圍內無真實店家資料。");
-            } catch(e) { alert("搜尋異常"); } finally { loader.style.display = 'none'; btn.disabled = false; }
+                else alert("🔍 此範圍內無符合店家資料。");
+            } catch(e) { alert("搜尋異常"); } finally { 
+                loader.style.display = 'none'; 
+                btn.disabled = false; 
+            }
         }
 
         async function getAiRecommendation(req) {
-            // 使用 gemini-2.5-flash
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
             
             const radius = isNearbyMode ? "1 公里" : "500 公尺";
-            const locationRule = isNearbyMode 
-                ? `【第一指令】：用戶目前位於座標 (${req.lat}, ${req.lng})。請先根據座標判斷其所屬的台灣行政區（如：台北市信義區、台中市西屯區等）及附近知名路段或地標。
-                   【第二指令】：以該點為中心，搜尋半徑 ${radius} 內真實存在的 Google Maps 店家。`
-                : `地點任務：${req.city}${req.district}${req.mrtStation ? '，鄰近 '+req.mrtStation+' 站' : ''}。`;
+            const locationNote = isNearbyMode 
+                ? `指令：用戶位於座標(${req.lat}, ${req.lng})。請先根據座標判斷行政區（如：信義區），並以此為中心搜尋半徑 1 公里內真實店家。`
+                : `指令：地點為「${req.city}${req.district}」${req.mrtStation ? '，鄰近 '+req.mrtStation+' 站' : ''}。`;
 
-            let filterNotes = "";
-            if (req.isHidden) filterNotes += "【隱藏版】：避開評論數過多(>2000)的連鎖店，尋找當地私房特色店。";
-            if (req.isOpen) filterNotes += `【營業中】：現在時間 ${req.userTime}。請核對地圖營業時間，若正在休息則不推薦。`;
-
-            const prompt = `你現在是 Google Maps 搬運工模式。請搜尋真實世界的餐廳數據：
-                1. 條件：種類「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」。
-                2. ${locationRule}
-                3. ${filterNotes}
+            const prompt = `你現在是 Google Maps 資料同步搬運工。
+                任務：搜尋「${req.food}」，目的為「${req.purpose}」，預算「${req.budget}」。
+                ${locationNote}
                 
-                【真實性協議】：
-                - 店名必須與 Google Maps 上 100% 一致。禁止虛構或胡亂組合。
-                - 必須提供精確的 Lat (緯度) 與 Lng (經度) 以利計算距離。
-                - 若該範圍找不到符合的高分店，請改推 3.0 星以上的真實小店，不可編造。
-
-                只回傳 JSON 陣列格式，禁止多餘文字：
-                [{ "name":"官方精確店名", "rating":"評分", "hours":"營業時間", "price":"價格", "signature":"招牌菜", "review_summary":"一句話短評", "address":"真實地址", "lat": 緯度數字, "lng": 經度數字 }]`;
+                【真實性協定】：
+                1. 店名必須 100% 精確且真實存在於 Google Maps 上。嚴禁虛構。
+                2. 若為連鎖店，必須包含正確分店名（例：藏壽司 - 台北館前店）。
+                3. 地址、緯度 (lat)、經度 (lng) 必須為該店的精確真實數據。
+                4. 現在時間 ${req.userTime}，${req.isOpen ? '僅限推薦營業中的店家。' : ''}
+                
+                只回傳 JSON 陣列格式：
+                [{ "name":"官方真實店名", "rating":"評分", "hours":"營業時間", "price":"價位", "signature":"推薦", "review_summary":"短評", "address":"地址", "lat": 緯度, "lng": 經度 }]`;
 
             try {
                 const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
@@ -379,10 +374,10 @@
                     document.getElementById('usage-text').innerText = `今日剩餘次數：${15 - count} 次`;
                 }
                 return { data };
-            } catch (e) { return { error: "AI 目前忙碌或資料解析失敗。請確認 API Key 有效性並再試一次。" }; }
+            } catch (e) { return { error: "AI 目前忙碌或資料解析失敗。" }; }
         }
 
-        // --- 4. UI 渲染 100% 還原 ---
+        // --- 4. UI 渲染 (原始版邏輯) ---
         let currentLikedList = []; let swipedCount = 0; let cardsRemaining = 0;
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
