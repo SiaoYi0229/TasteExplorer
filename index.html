@@ -9,7 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>TasteExplorer - 美味探索</title>
   <style>
-/* --- 1. 核心樣式：100% 還原您最原始的配色與設定 --- */
+/* --- 1. 核心樣式：100% 還原配色 --- */
 :root {
     --primary-orange: #FF6600;
     --glass-bg: rgba(25, 25, 25, 0.85);
@@ -29,13 +29,7 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
 .bg-slide.active { opacity: 0.6; }
 
-/* --- 2. API 設定：還原原始樣式 --- */
-#api-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
-.api-card { width: 100%; max-width: 340px; background: rgba(20, 20, 20, 0.8); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-.api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
-.api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
-
-/* --- 3. 佈局核心：強制的頂、中、底三段結構 --- */
+/* --- 2. 佈局核心：三段式平均分配 --- */
 .container { 
     width: 95%; 
     max-width: 357px; 
@@ -43,14 +37,14 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
     z-index: 10; 
     display: flex; 
     flex-direction: column; 
-    justify-content: space-between; /* 頂部組、卡片、按鈕三組拉開 */
+    justify-content: space-evenly; /* 平均分配標題、卡片、按鈕的距離 */
     align-items: center; 
-    padding: 30px 0 40px 0; 
+    padding: 10px 0; 
     position: relative; 
 }
 .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
-/* Group 1: 頂部標題組 (Logo + Tagline + Coords 鎖死) */
+/* --- Group 1: 標題組 (純文字) --- */
 .header { 
     width: 100%; 
     flex: 0 0 auto; 
@@ -62,46 +56,56 @@ body { color: #fff; display: flex; align-items: center; justify-content: center;
 .logo { font-size: 2.77rem; font-weight: 800; color: var(--primary-orange); line-height: 1.1; letter-spacing: -1px; margin: 0; }
 .tagline { font-size: 1.2rem; color: #ffffff; opacity: 0.8; margin-top: 6px; }
 
-/* 座標：鎖死在標語下方 6px */
-.location-status {
-    font-size: 0.68rem; 
-    color: var(--accent-yellow);
-    background: rgba(0,0,0,0.3);
-    padding: 2px 10px;
-    border-radius: 20px;
-    margin-top: 6px; 
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid rgba(255, 204, 0, 0.3);
-}
-.location-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
-@keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
-
-/* ⚙️ 設定按鈕：與標題水平置中，並對齊卡片邊緣 */
+/* ⚙️ 設定按鈕：精準對齊標題 TasteExplorer 右側 */
 .settings-btn { 
     position: absolute; 
-    top: 0;
-    right: 0px; 
-    height: 3rem; 
-    display: flex;
-    align-items: center;
+    top: 50%;
+    right: 0; 
+    transform: translateY(-50%); 
     font-size: 24px; 
     cursor: pointer; 
     z-index: 50; 
+    padding: 10px;
 }
 
-/* Group 2: 中間選項組 (玻璃卡片) */
+/* --- Group 2: 玻璃卡片 (包含座標按鈕) --- */
 .glass-card { 
     width: 100%; 
     background: rgba(20, 20, 20, 0.75); 
     backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
-    border-radius: 20px; padding: 18px; 
+    border-radius: 20px; 
+    padding: 18px; 
     border: 1px solid var(--glass-border); 
-    flex: 0 0 auto; 
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* 卡片內容間的標準間距 */
 }
 
-/* --- 4. 100% 還原原始選單與輸入框樣式 --- */
+/* 座標按鈕樣式：做成可點擊感 */
+.location-status {
+    width: 100%;
+    font-size: 0.8rem; 
+    color: var(--accent-yellow);
+    background: rgba(255, 204, 0, 0.1);
+    padding: 10px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid rgba(255, 204, 0, 0.3);
+    cursor: pointer;
+    transition: 0.2s;
+}
+.location-status:active {
+    background: rgba(255, 204, 0, 0.2);
+    transform: scale(0.98);
+}
+.location-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
+@keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
+
+/* --- 3. 選單與輸入框 (100% 還原原始樣式) --- */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .full-width { grid-column: span 2; }
 label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
@@ -115,33 +119,33 @@ select option { background-color: #222; }
 .toggle-btn.selected { background: rgba(255,102,0,0.2); border-color: var(--primary-orange); color: var(--primary-orange); font-weight: bold; }
 #btn-open.selected { background: rgba(46,204,113,0.15); border-color: #2ecc71; color: #2ecc71; }
 
-/* Group 3: 底部按鈕 */
+/* --- Group 3: 底部按鈕組 --- */
 .footer-action { width: 100%; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
 .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); }
 .usage-hint { font-size: 0.85rem; margin-top: 10px; opacity: 0.7; color: #ffffff; font-weight: 500; }
 
-/* --- 5. 卡片滑動系統標籤還原 (LIKE/NOPE/CHOSEN) --- */
-.swipe-label { position: absolute; top: 30px; padding: 5px 15px; border: 4px solid; border-radius: 10px; font-size: 2rem; font-weight: 900; text-transform: uppercase; opacity: 0; pointer-events: none; z-index: 10; }
-.label-like { right: 20px; color: #2ecc71; border-color: #2ecc71; transform: rotate(15deg); }
-.label-nope { left: 20px; color: #e74c3c; border-color: #e74c3c; transform: rotate(-15deg); }
-.label-chosen { position: absolute; top: 20px; left: 20px; padding: 5px 15px; border: 4px solid #2ecc71; color: #2ecc71; border-radius: 10px; font-size: 1.8rem; font-weight: 900; opacity: 0; pointer-events: none; z-index: 20; transform: scale(5); transition: all 0.4s; background: rgba(0,0,0,0.3); }
-.label-chosen.active { opacity: 1; transform: scale(1) rotate(-15deg); }
+/* --- 4. 探索卡片與 API (還原原本設計) --- */
+#api-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; }
+.api-card { width: 100%; max-width: 340px; background: rgba(20, 20, 20, 0.8); border: 1px solid var(--glass-border); border-radius: 24px; padding: 30px; }
+.api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; text-align: center; }
+.api-save-btn { width: 100%; background: var(--primary-orange); color: white; padding: 14px; border-radius: 12px; font-weight: bold; }
 
 #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
-.card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
-.swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
+.card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; padding: 20px 0 120px 0; gap: 20px; }
 .swipe-card { width: 100%; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border); padding: 20px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
+.swipe-label { position: absolute; top: 30px; padding: 5px 15px; border: 4px solid; border-radius: 10px; font-size: 2rem; font-weight: 900; opacity: 0; pointer-events: none; }
+.label-like { right: 20px; color: #2ecc71; border-color: #2ecc71; transform: rotate(15deg); }
+.label-nope { left: 20px; color: #e74c3c; border-color: #e74c3c; transform: rotate(-15deg); }
+.label-chosen { position: absolute; top: 20px; left: 20px; padding: 5px 15px; border: 4px solid #2ecc71; color: #2ecc71; border-radius: 10px; font-size: 1.8rem; opacity: 0; transform: scale(5); transition: 0.4s; background: rgba(0,0,0,0.3); }
+.label-chosen.active { opacity: 1; transform: scale(1) rotate(-15deg); }
 
-/* 距離標籤樣式 */
-.card-badges { display: flex; gap: 6px; }
 .card-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
 .badge-rating { background: var(--accent-yellow); color: #000; }
 .badge-price { background: rgba(255,255,255,0.1); color: #eee; }
 .badge-distance { background: var(--primary-orange); color: #fff; }
 
 .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; }
-.swipe-hints { position: absolute; top: 12px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; z-index: 5; }
-.hint-item { font-size: 0.65rem; font-weight: bold; color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; }
+.close-swiper { position: fixed; bottom: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 30px; border-radius: 50px; cursor: pointer; z-index: 120; font-weight: bold; backdrop-filter: blur(10px); }
 #loader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; }
 .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top-color: var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -152,11 +156,11 @@ select option { background-color: #222; }
     <div id="bg-container"></div>
     <div class="container" id="main-ui">
         <div class="header"><div class="logo">TasteExplorer</div><div class="settings-btn" onclick="document.getElementById('api-overlay').style.display='flex'">⚙️</div><div class="tagline">探索隱藏美味 享受極致饗宴</div></div>
-<div id="location-display" class="location-status">
+        <div class="glass-card">
+            <div id="location-display" class="location-status">
     <div class="location-dot"></div>
     <span id="coords-text">正在取得 GPS 座標...</span>
 </div>
-        <div class="glass-card">
             <div class="form-grid">
                 <div class="form-group"><label>📍 縣市</label><div class="input-box"><select id="city" onchange="updateDistricts(); checkTransAvailability();">
                     <optgroup label="北部地區"><option value="Taipei" selected>台北市</option><option value="NewTaipei">新北市</option><option value="Keelung">基隆市</option><option value="Taoyuan">桃園市</option><option value="HsinchuCity">新竹市</option><option value="HsinchuCounty">新竹縣</option><option value="Yilan">宜蘭縣</option></optgroup>
