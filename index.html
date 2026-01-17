@@ -330,7 +330,7 @@
 
         async function getAiRecommendation(req) {
             // 使用 Gemini 1.5 Flash 穩定版
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${req.userApiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
             
             // 強化的搬運工協議 Prompt
             const prompt = `你現在是 Google Maps 實時數據搬運工代理。
