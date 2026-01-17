@@ -337,7 +337,7 @@
         }
 
         async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${req.userApiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
             const prompt = `你是一位專業美食專家。請推薦 5 間真實存在的餐廳：
                 地點：${req.city} ${req.district}
                 條件：想吃 ${req.food}，目的 ${req.purpose}，預算 ${req.budget}
