@@ -310,9 +310,9 @@
     const loader = document.getElementById('loader');
     const btn = document.getElementById('search-btn');
     
-    if (isNearbyMode && !userCoords.lat) { 
-        alert("尚未取得您的 GPS 座標，請稍候。"); 
-        return; 
+    if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) {
+        alert("尚未取得您的 GPS 座標，無法進行附近搜尋。");
+        return;
     }
 
     btn.disabled = true; 
@@ -325,15 +325,15 @@
 
         const data = {
             userApiKey: getStoredKey(),
-            city: isNearbyMode ? "座標圓心模式" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-            district: isNearbyMode ? `緯度:${userCoords.lat}, 經度:${userCoords.lng} 周邊500公尺` : document.getElementById('district').value,
+            city: isNearbyMode ? "精準座標模式" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+            district: isNearbyMode ? `(Lat:${userCoords.lat}, Lng:${userCoords.lng}) 半徑500公尺` : document.getElementById('district').value,
             food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
             purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
             budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
             people: document.getElementById('people').value,
             userTime: timeStr,
             mrtStation: isNearbyMode ? "" : document.getElementById('mrt-station').value,
-            filters: (isNearbyMode ? "【距離優先模式：必須在 500 公尺步程內】" : "") + 
+            filters: (isNearbyMode ? "【絕對位置驗證：必須在 500m 內】" : "") + 
                      (document.getElementById('btn-hidden').classList.contains('selected') ? "隱藏版 " : "") + 
                      (document.getElementById('btn-open').classList.contains('selected') ? "營業中 " : "")
         };
@@ -341,40 +341,44 @@
         const res = await getAiRecommendation(data);
         if(res.error) {
             alert(res.error);
-        } else if (res.data.length === 0) {
-            alert("🔍 此座標周邊 500m 內找不到符合條件的真實店家，請試著切換至縣市搜尋或放寬種類限制。");
+        } else if (!res.data || res.data.length === 0) {
+            alert("🔍 附近 500m 內找不到符合條件的店家，建議改用縣市區域搜尋。");
         } else {
             renderCards(res.data);
         }
     } catch(e) { 
-        alert("搜尋異常，請檢查網路連線。"); 
+        alert("搜尋發生錯誤，請檢查連線。"); 
     } finally { 
         loader.style.display = 'none'; 
         btn.disabled = false; 
     }
 }
         async function getAiRecommendation(req) {
-    // 鎖定 gemini-2.5-flash 穩定路徑
+    // 鎖定使用者指定的 gemini-2.5-flash
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
     
-    // 根據模式強化地點描述
-    const modeInstruction = isNearbyMode 
-        ? `【精準區域限制】以座標 (緯度:${userCoords.lat}, 經度:${userCoords.lng}) 為圓心，僅限搜尋半徑「500公尺範圍內」的店家。你必須核對地圖，超過此距離的店家絕對禁止推薦。`
+    // 附近模式的強制指令
+    const modeConstraint = isNearbyMode 
+        ? `【緊急地理限制】目前位置是 (緯度:${userCoords.lat}, 經度:${userCoords.lng})。
+           你必須只搜尋半徑「500公尺步程內」的店。
+           1. 嚴禁編造：如果 500m 內沒有店，直接回傳空陣列 []，不要編造！
+           2. 嚴禁改名：店名必須與 Google Maps 官方名稱 100% 一致。
+           3. 精確座標：lat/lng 必須是「該店大門」的實際座標，不可給行政區中心點。`
         : `搜尋地點為 ${req.city}${req.district} ${req.mrtStation ? '(鄰近' + req.mrtStation + '站)' : ''}。`;
 
-    const prompt = `你是一位專業的台灣地圖美食家，專門核對 Google Maps 資料。
-        ${modeInstruction}
-        條件：種類「${req.food}」，目的「${req.purpose}」，預算「${req.budget}」。
+    const prompt = `你是 Google Maps 數據核對專家。
+        ${modeConstraint}
+        搜尋需求：種類 ${req.food}，目的 ${req.purpose}，預算 ${req.budget}。
         ${req.filters}
 
-        【絕對準則：嚴禁虛構與偏離】
-        1. 推薦的店家必須在 Google Maps 上真實存在，店名必須 100% 與官方名稱一致，不可自行修改。
-        2. 經緯度 (lat, lng) 必須是該店的「精確位置」，精確到小數點後 6 位。
-        3. 如果附近範圍內找不到符合條件的真實店家，請回傳空陣列 []，寧缺勿濫，絕對不可編造店家。
-        4. 你回傳的店家位置將被系統嚴格計算距離，若超過 500m 將被視為失敗。
+        【核心規則： hallucination 是禁止的】
+        - 絕不編造這世界上不存在的店家。
+        - 絕不隨意在店名後方加「分店」、「xx店」或「xx小鋪」。
+        - 你回傳的店家 lat, lng 會被用來計算 Haversine 距離，若與我提供的中心點距離超過 0.5km，則視為失效。
+        - 如果你對該地點不熟悉，回傳 []。
 
-        請只回傳 JSON 陣列格式：
-        [{"name":"精確店名","rating":"4.5","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"地址","lat":25.xxx,"lng":121.xxx}]`;
+        請只回傳 JSON 格式陣列：
+        [{"name":"精確店名","rating":"4.5","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"一句話短評","address":"地址","lat":25.xxx,"lng":121.xxx}]`;
 
     try {
         const response = await fetch(url, { 
@@ -383,16 +387,22 @@
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) 
         });
         const result = await response.json();
-        if (result.error) throw new Error(result.error.message);
+        
+        if (result.error) {
+            // 如果 API 回傳模型不存在，提示使用者檢查模型名稱
+            if (result.error.message.includes("not found")) return { error: "API 報錯：找不到 gemini-2.5-flash 模型，請確認模型路徑是否正確。" };
+            throw new Error(result.error.message);
+        }
         
         let text = result.candidates[0].content.parts[0].text;
-        // 強化提取 logic，過濾掉 AI 的解釋文字
-        const jsonStart = text.indexOf('[');
-        const jsonEnd = text.lastIndexOf(']') + 1;
-        if (jsonStart === -1) throw new Error("AI回傳格式錯誤");
         
-        const data = JSON.parse(text.substring(jsonStart, jsonEnd));
+        // 強化 JSON 提取：抓取最外層的中括號，防止 AI 的廢話干擾
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error("AI 無法產生正確格式");
         
+        const data = JSON.parse(jsonMatch[0]);
+        
+        // 計次邏輯
         const keyId = "KEY_" + req.userApiKey.slice(-10);
         let count = parseInt(localStorage.getItem('COUNT_' + keyId) || '0') + 1;
         localStorage.setItem('COUNT_' + keyId, count.toString());
@@ -400,8 +410,8 @@
         
         return { data };
     } catch (e) { 
-        console.error(e);
-        return { error: "AI 目前忙碌中或找不到符合真實地理條件的店家，請放寬搜尋條件。" }; 
+        console.error("AI Error:", e);
+        return { error: "AI 目前無法回應精確數據，請試著放寬條件或稍後再試。" }; 
     }
 }
 
