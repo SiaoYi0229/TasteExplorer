@@ -310,25 +310,19 @@
             const loader = document.getElementById('loader');
             const btn = document.getElementById('search-btn');
             const ui = document.getElementById('main-ui');
-            
             if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
-            
-            btn.disabled = true; 
-            loader.style.display = 'flex'; 
+            btn.disabled = true; loader.style.display = 'flex';
 
             try {
                 const now = new Date();
                 const data = {
-                    userApiKey: getStoredKey(),
+                    apiKey: getStoredKey(),
                     city: isNearbyMode ? "" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
                     district: isNearbyMode ? "" : document.getElementById('district').value,
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
                     budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
                     mrtStation: isNearbyMode ? "" : (document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : ""),
-                    transportType: isNearbyMode ? "GPS" : document.getElementById('transport').value,
-                    isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
-                    isOpen: document.getElementById('btn-open').classList.contains('selected'),
                     userTime: `${now.getHours()}:${now.getMinutes()}`,
                     lat: userCoords.lat, lng: userCoords.lng
                 };
@@ -336,19 +330,19 @@
                 const res = await getAiRecommendation(data);
                 
                 if(res.error) { 
-                    alert(res.error);
-                    ui.classList.remove('blur-mode'); // 確保失敗時主畫面恢復
+                    alert(res.error); 
+                    ui.classList.remove('blur-mode');
                 } else if(res.data && res.data.length > 0) {
-                    const keyId = "KEY_" + data.userApiKey.slice(-10);
+                    const keyId = "KEY_" + data.apiKey.slice(-10);
                     localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
                     updateUsageDisplay();
                     renderCards(res.data);
                 } else { 
-                    alert("🔍 聯網搜尋後找不到符合條件的店家，建議稍微放寬條件再試一次。");
+                    alert("🔍 未能搜尋到符合條件的店家，建議放寬條件（如不勾選隱藏版）再試一次。"); 
                     ui.classList.remove('blur-mode');
                 }
             } catch(e) { 
-                alert("搜尋發生異常，請檢查網路或 API Key。"); 
+                alert("搜尋異常，請稍後再試。"); 
                 ui.classList.remove('blur-mode');
             } finally { 
                 loader.style.display = 'none'; 
@@ -357,72 +351,38 @@
         }
 
         async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
-            
-            // 強化位置描述邏輯
-            let locationContext = isNearbyMode 
-                ? `請先確認座標 (${req.lat}, ${req.lng}) 所在的大約行政區與路段，以此為中心搜尋 1.5 公里內。` 
-                : `目標位置在：${req.city}${req.district}${req.mrtStation ? '，且鄰近' + req.mrtStation + '站' : ''}。`;
+            // 指定使用 gemini-2.5-flash
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.apiKey}`;
+            let loc = isNearbyMode ? `座標 (${req.lat}, ${req.lng}) 附近` : `${req.city}${req.district}${req.mrtStation?'鄰近'+req.mrtStation+'站':''}`;
 
-            const prompt = `你現在是專業美食地圖助手，請啟動 Google Search 工具進行實時聯網搜尋。
-                
-                【搜尋任務】：
-                ${locationContext}
-                尋找符合「${req.food}」類別、用途為「${req.purpose}」、預算約「${req.budget}」的真實店家。
-                ${req.isHidden ? '必須包含具有隱藏版或在地人口碑特色的店家。' : ''}
-                確認店家在現在台灣時間 (${req.userTime}) 是否有營業。
+            const prompt = `你是美食搜尋助手。任務如下：
+                1. 首先列出 5 間在「${loc}」符合「${req.food}」類別、用途「${req.purpose}」、預算「${req.budget}」的店家。
+                2. 立刻啟動 Google Search 聯網核對真實地址、評分，並確認現在台灣時間 (${req.userTime}) 是否營業中。
+                3. 如果 Google 發現店家已歇業，請找另一間替代。
 
-                【輸出規範】：
-                1. 僅回傳一個 JSON 陣列，嚴禁任何 Markdown 語法（不要 \`\`\`json）。
-                2. 嚴禁在 JSON 內容內部出現引用標記（如 [1], [2]）。若有來源請放在 JSON 結束之後。
-                3. 如果搜尋不到符合的店家，請回傳空的 JSON 陣列：[]。
-                4. 經緯度(lat, lng)必須精確且為數字。
+                輸出規範：
+                - 只回傳 JSON 陣列。
+                - 禁止 Markdown (\`\`\`json) 或搜尋標記(如 [1])。
+                - 必須包含真實的 lat, lng 數字。
 
                 JSON 結構：
-                [{ "name":"店名", "rating":"評分", "hours":"今日營業時間", "price":"消費價位", "signature":"推薦必點", "review_summary":"一句話短評", "address":"詳細地址", "lat": 緯度數字, "lng": 經度數字 }]`;
+                [{ "name":"官方店名", "rating":"評分", "hours":"營業時段", "price":"價位", "signature":"推薦必點", "review_summary":"短評", "address":"地址", "lat": 緯度數字, "lng": 經度數字 }]`;
 
-            const requestBody = {
-                contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search: {} }] 
-            };
+            const requestBody = { contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] };
 
             try {
                 const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
                 const result = await response.json();
-
-                if (result.error) return { error: `API 錯誤: ${result.error.message}` };
+                if (!result.candidates || !result.candidates[0].content) throw new Error("Struct Fail");
                 
                 let text = result.candidates[0].content.parts[0].text;
-                
-                // --- 深度清洗 JSON 字串 ---
-                // 1. 移除引用標記（支援 [1], [1,2], 【1】等格式）
-                text = text.replace(/\[\d+(,\s*\d+)*\]/g, "");
-                text = text.replace(/【\d+】/g, "");
-                
-                // 2. 移除 Markdown 代碼塊標記
-                text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-                
-                // 3. 提取第一個 [ 到最後一個 ] 之間的內容
-                const startIdx = text.indexOf('[');
-                const endIdx = text.lastIndexOf(']');
-                
-                if (startIdx === -1 || endIdx === -1) {
-                    console.log("AI Output Missing JSON:", text);
-                    return { data: [] };
-                }
-                
-                const jsonContent = text.substring(startIdx, endIdx + 1);
-                
-                try {
-                    const parsedData = JSON.parse(jsonContent);
-                    return { data: parsedData };
-                } catch (parseErr) {
-                    // 如果還是解析失敗，可能是內部有不當換行或特殊字元
-                    console.error("Internal Parse Error:", parseErr, jsonContent);
-                    return { error: "解析資料格式錯誤，請再試一次。" };
-                }
+                // ★ 清洗雜訊 ★
+                text = text.replace(/\[\d+(,\s*\d+)*\]/g, "").replace(/【\d+】/g, "").replace(/```json/g, "").replace(/```/g, "").trim();
+                const startIdx = text.indexOf('['); const endIdx = text.lastIndexOf(']');
+                if (startIdx === -1 || endIdx === -1) throw new Error("Format Error");
+                return { data: JSON.parse(text.substring(startIdx, endIdx + 1)) };
             } catch (e) {
-                return { error: "連線至 AI 伺服器失敗。" };
+                return { error: "解析資料失敗，請再試一次。" };
             }
         }
 
