@@ -3,11 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <!-- ★★★ iOS 全螢幕滲透設定：讓底圖填滿靈動島 ★★★ -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
     <title>TasteExplorer - 美味探索</title>
     <link rel="icon" href="favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="favicon.png">
@@ -28,14 +23,7 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
         body { color: #fff; display: flex; align-items: center; justify-content: center; }
 
-        /* ★★★ 底圖全滿版修正：強制蓋住整個面板 ★★★ */
-        #bg-container { 
-            position: fixed; 
-            top: 0; left: 0; right: 0; bottom: 0; 
-            width: 100vw; height: 100dvh; 
-            z-index: -1; 
-            pointer-events: none; 
-        }
+        #bg-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
         .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
         .bg-slide.active { opacity: 0.6; }
 
@@ -53,9 +41,7 @@
             width: 95%; max-width: 357px; height: 100dvh; z-index: 10; 
             display: flex; flex-direction: column; 
             justify-content: space-evenly; 
-            align-items: center; 
-            padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; /* 避開靈動島內容，但底圖會透過去 */
-            position: relative; 
+            align-items: center; padding: 10px 0; position: relative; 
             transition: transform 0.3s ease, filter 0.3s ease;
         }
         .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
@@ -77,21 +63,21 @@
             padding: 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
             border: 1px solid transparent; cursor: pointer; transition: 0.3s; margin-bottom: 5px;
         }
-        .location-status.active-mode { background: rgba(255, 204, 0, 0.15) !important; color: var(--accent-yellow) !important; border-color: rgba(255, 204, 0, 0.4); box-shadow: 0 0 15px rgba(255, 204, 0, 0.1); }
+        .location-status.active-mode { 
+            background: rgba(255, 204, 0, 0.15) !important; color: var(--accent-yellow) !important;
+            border-color: rgba(255, 204, 0, 0.4); box-shadow: 0 0 15px rgba(255, 204, 0, 0.1); 
+        }
         .location-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(46, 204, 113, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); } }
 
         .hide-field { display: none !important; }
+
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .full-width { grid-column: span 2; }
         label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
         .input-box { background: var(--input-bg); border-radius: 10px; height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid transparent; transition: 0.3s; }
-        
-        /* ★ 下拉選單：刪除箭頭 ★ */
-        select { 
-            background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; 
-            appearance: none; -webkit-appearance: none; 
-            cursor: pointer; 
-        }
+        .input-box:focus-within { border-color: var(--primary-orange); box-shadow: 0 0 8px rgba(255, 102, 0, 0.3); }
+        select { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; appearance: none; -webkit-appearance: none; cursor: pointer; }
         select option { background-color: #222; }
 
         .toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
@@ -100,22 +86,13 @@
         #btn-open.selected { background: rgba(46,204,113,0.15); border-color: #2ecc71; color: #2ecc71; }
 
         .footer-action { width: 100%; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
-        
-        /* ★ 探索時按鈕不變灰 ★ */
         .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); transition: 0.3s; }
-        .cta-button:disabled { opacity: 0.9; cursor: not-allowed; } 
+        .cta-button:disabled { background: #444; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
         
         .usage-hint { font-size: 0.85rem; opacity: 0.7; color: #ffffff; font-weight: 500; flex: 0 0 auto; }
 
-        /* --- 5. 推薦卡片樣式：100% 原始樣式回歸 --- */
         #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
-        .card-stack { 
-            width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; 
-            overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px;
-            scrollbar-width: none; -ms-overflow-style: none; /* 隱藏拉霸 */
-        }
-        .card-stack::-webkit-scrollbar { display: none; }
-
+        .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
         .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
         .swipe-card { width: 100%; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border); padding: 20px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
 
@@ -218,7 +195,7 @@
     </div>
 
     <script>
-        // --- 100% 完整的龐大交通數據與邏輯 ---
+        // --- 核心數據 100% 還原 ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
@@ -240,8 +217,9 @@
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
-            return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) < 1) ? `${(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 1000).toFixed(0)}m` : `${(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1)}km`;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`;
         }
 
         function initLocationWatch() {
@@ -332,14 +310,133 @@
             const loader = document.getElementById('loader');
             const btn = document.getElementById('search-btn');
             const ui = document.getElementById('main-ui');
+            
             if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
+            
+            btn.disabled = true; 
+            loader.style.display = 'flex'; 
+
+            try {
+                const now = new Date();
+                const data = {
+                    userApiKey: getStoredKey(),
+                    city: isNearbyMode ? "" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    district: isNearbyMode ? "" : document.getElementById('district').value,
+                    food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
+                    purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
+                    budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
+                    mrtStation: isNearbyMode ? "" : (document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : ""),
+                    transportType: isNearbyMode ? "GPS" : document.getElementById('transport').value,
+                    isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
+                    isOpen: document.getElementById('btn-open').classList.contains('selected'),
+                    userTime: `${now.getHours()}:${now.getMinutes()}`,
+                    lat: userCoords.lat, lng: userCoords.lng
+                };
+
+                const res = await getAiRecommendation(data);
+                
+                if(res.error) { 
+                    alert(res.error);
+                    ui.classList.remove('blur-mode'); // 確保失敗時主畫面恢復
+                } else if(res.data && res.data.length > 0) {
+                    const keyId = "KEY_" + data.userApiKey.slice(-10);
+                    localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
+                    updateUsageDisplay();
+                    renderCards(res.data);
+                } else { 
+                    alert("🔍 聯網搜尋後找不到符合條件的店家，建議稍微放寬條件再試一次。");
+                    ui.classList.remove('blur-mode');
+                }
+            } catch(e) { 
+                alert("搜尋發生異常，請檢查網路或 API Key。"); 
+                ui.classList.remove('blur-mode');
+            } finally { 
+                loader.style.display = 'none'; 
+                btn.disabled = false; 
+            }
+        }
+
+        async function getAiRecommendation(req) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
+            
+            // 強化位置描述邏輯
+            let locationContext = isNearbyMode 
+                ? `請先確認座標 (${req.lat}, ${req.lng}) 所在的大約行政區與路段，以此為中心搜尋 1.5 公里內。` 
+                : `目標位置在：${req.city}${req.district}${req.mrtStation ? '，且鄰近' + req.mrtStation + '站' : ''}。`;
+
+            const prompt = `你現在是專業美食地圖助手，請啟動 Google Search 工具進行實時聯網搜尋。
+                
+                【搜尋任務】：
+                ${locationContext}
+                尋找符合「${req.food}」類別、用途為「${req.purpose}」、預算約「${req.budget}」的真實店家。
+                ${req.isHidden ? '必須包含具有隱藏版或在地人口碑特色的店家。' : ''}
+                確認店家在現在台灣時間 (${req.userTime}) 是否有營業。
+
+                【輸出規範】：
+                1. 僅回傳一個 JSON 陣列，嚴禁任何 Markdown 語法（不要 \`\`\`json）。
+                2. 嚴禁在 JSON 內容內部出現引用標記（如 [1], [2]）。若有來源請放在 JSON 結束之後。
+                3. 如果搜尋不到符合的店家，請回傳空的 JSON 陣列：[]。
+                4. 經緯度(lat, lng)必須精確且為數字。
+
+                JSON 結構：
+                [{ "name":"店名", "rating":"評分", "hours":"今日營業時間", "price":"消費價位", "signature":"推薦必點", "review_summary":"一句話短評", "address":"詳細地址", "lat": 緯度數字, "lng": 經度數字 }]`;
+
+            const requestBody = {
+                contents: [{ parts: [{ text: prompt }] }],
+                tools: [{ google_search: {} }] 
+            };
+
+            try {
+                const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
+                const result = await response.json();
+
+                if (result.error) return { error: `API 錯誤: ${result.error.message}` };
+                
+                let text = result.candidates[0].content.parts[0].text;
+                
+                // --- 深度清洗 JSON 字串 ---
+                // 1. 移除引用標記（支援 [1], [1,2], 【1】等格式）
+                text = text.replace(/\[\d+(,\s*\d+)*\]/g, "");
+                text = text.replace(/【\d+】/g, "");
+                
+                // 2. 移除 Markdown 代碼塊標記
+                text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+                
+                // 3. 提取第一個 [ 到最後一個 ] 之間的內容
+                const startIdx = text.indexOf('[');
+                const endIdx = text.lastIndexOf(']');
+                
+                if (startIdx === -1 || endIdx === -1) {
+                    console.log("AI Output Missing JSON:", text);
+                    return { data: [] };
+                }
+                
+                const jsonContent = text.substring(startIdx, endIdx + 1);
+                
+                try {
+                    const parsedData = JSON.parse(jsonContent);
+                    return { data: parsedData };
+                } catch (parseErr) {
+                    // 如果還是解析失敗，可能是內部有不當換行或特殊字元
+                    console.error("Internal Parse Error:", parseErr, jsonContent);
+                    return { error: "解析資料格式錯誤，請再試一次。" };
+                }
+            } catch (e) {
+                return { error: "連線至 AI 伺服器失敗。" };
+            }
+        }
+
+        async function startSearch() {
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('search-btn');
+            const ui = document.getElementById('main-ui');
             btn.disabled = true; loader.style.display = 'flex';
 
             try {
                 const now = new Date();
                 const data = {
                     apiKey: getStoredKey(),
-                    city: isNearbyMode ? "座標中心" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    city: isNearbyMode ? "" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
                     district: isNearbyMode ? "" : document.getElementById('district').value,
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
@@ -350,53 +447,30 @@
                 };
 
                 const res = await getAiRecommendation(data);
-                
-                if(res.error) { 
-                    alert(res.error); 
-                    ui.classList.remove('blur-mode');
-                } else if(res.data && res.data.length > 0) {
+                if(res.error) { alert(res.error); } 
+                else if(res.data && res.data.length > 0) {
                     const keyId = "KEY_" + data.apiKey.slice(-10);
                     localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
                     updateUsageDisplay();
                     renderCards(res.data);
-                } else { 
-                    alert("🔍 未能搜尋到符合條件的店家。"); 
-                    ui.classList.remove('blur-mode');
-                }
-            } catch(e) { 
-                alert("連線異常。"); 
-                ui.classList.remove('blur-mode');
-            } finally { 
-                loader.style.display = 'none'; 
-                btn.disabled = false; 
-            }
+                } else { alert("🔍 找不到符合的店家。"); }
+            } catch(e) { alert("連線發生異常。"); } finally { loader.style.display = 'none'; btn.disabled = false; }
         }
 
-        // ★★★ 核心搜尋邏輯：兩段式 AI 提案 + Google 核對 ★★★
+        // 指定使用 gemini-2.5-flash
         async function getAiRecommendation(req) {
-            // 指定使用 gemini-2.5-flash
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.apiKey}`;
-            let loc = isNearbyMode ? `座標(${req.lat}, ${req.lng})附近` : `${req.city}${req.district}${req.mrtStation?'鄰近'+req.mrtStation+'站':''}`;
-
-            const prompt = `你是美食搜尋助手。任務：
-                1. 根據知識列出 5 間符合「${loc}」、「${req.food}」類別、用途「${req.purpose}」、預算「${req.budget}」的店家。
-                2. 啟動 Google Search 核對真實地址、現在時間(${req.userTime})是否營業。
-                輸出規則：僅回傳 JSON 陣列，嚴禁 Markdown (\`\`\`json) 或引用號[1]。
-                結構：[{ "name":"店名", "rating":"評分", "hours":"時段", "signature":"必點", "review_summary":"一句話", "address":"地址", "lat": 緯度數字, "lng": 經度數字 }]`;
-
+            let loc = isNearbyMode ? `座標(${req.lat}, ${req.lng})附近 1km` : `${req.city}${req.district}${req.mrtStation?'鄰近'+req.mrtStation+'站':''}`;
+            const prompt = `任務：根據「${loc}」、「${req.food}」、「${req.purpose}」、「${req.budget}」構思 5 間店。立刻使用 Google Search 聯網核對真實地址、評分與現在(${req.userTime})營業狀態。回傳純 JSON 陣列，禁止 Markdown 或引用號如 [1]。結構：[{ "name":"店名", "rating":"評分", "hours":"營業時段", "price":"價位", "signature":"必點", "review_summary":"短評", "address":"地址", "lat": 緯度數字, "lng": 經度數字 }]`;
             const requestBody = { contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] };
 
             try {
                 const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
                 const result = await response.json();
-                if (!result.candidates || !result.candidates[0].content) throw new Error("Struct Fail");
-                
                 let text = result.candidates[0].content.parts[0].text;
-                // 強力清洗
                 text = text.replace(/\[\d+\]/g, "").replace(/【\d+】/g, "").replace(/```json/g, "").replace(/```/g, "").trim();
-                const start = text.indexOf('['); const end = text.lastIndexOf(']');
-                if (start === -1) return { data: [] };
-                return { data: JSON.parse(text.substring(start, end + 1)) };
+                const s = text.indexOf('['); const e = text.lastIndexOf(']');
+                return { data: JSON.parse(text.substring(s, e + 1)) };
             } catch (e) { return { error: "解析資料失敗。" }; }
         }
         
@@ -417,23 +491,24 @@
                     <h3>${res.name}</h3>
                     <div class="card-badges">
                         <span class="card-badge badge-rating">⭐ ${res.rating}</span>
+                        <span class="card-badge badge-price">💰 ${res.price || '---'}</span>
                         <span class="card-badge badge-distance">📍 ${distStr}</span>
                     </div>
-                    <div class="info-row">🕒 營業：${res.hours}</div>
-                    <div class="info-row">🔥 招牌：${res.signature}</div>
+                    <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
+                    <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
                     <div class="card-summary">"${res.review_summary}"</div>
                     <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看地圖</a>
                 `;
                 wrapper.appendChild(card); 
                 stack.appendChild(wrapper); 
-                initSwipe(card, wrapper);
+                initSwipe(card, wrapper, res, restaurants.length === 1);
             });
             const closeBtn = document.createElement('button');
             closeBtn.className = 'close-swiper'; closeBtn.innerText = '← 返回調整'; closeBtn.onclick = resetUI;
             stack.appendChild(closeBtn); 
         }
 
-        function initSwipe(el, wrapper) {
+        function initSwipe(el, wrapper, resData, isLastOne) {
             let startX, moveX = 0;
             const likeLabel = el.querySelector('.label-like'); const nopeLabel = el.querySelector('.label-nope');
             el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; el.style.transition = 'none'; });
@@ -447,29 +522,16 @@
             });
             el.addEventListener('touchend', () => { 
                 el.style.transition = '0.4s ease'; 
-                const cards = document.querySelectorAll('.swipe-card-wrapper');
                 if (Math.abs(moveX) > 100) { 
                     const dir = moveX > 0 ? 1 : -1;
-                    if (dir === 1 && cards.length === 1) { 
-                        // ★ 右滑到最後一張 -> 蓋印章 ★
+                    if (isLastOne && dir === 1) { 
                         el.style.transform = 'translateX(0) rotate(0deg)'; 
-                        likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0;
-                        el.querySelector('.label-chosen').classList.add('active'); 
-                    } else { 
-                        // ★ 其他滑走 ★
-                        el.style.transform = `translateX(${dir * 150}%)`; 
-                        setTimeout(() => { 
-                            wrapper.remove(); 
-                            if(document.querySelectorAll('.swipe-card-wrapper').length === 0) resetUI();
-                        }, 300); 
-                    }
+                        likeLabel.style.opacity = 0; el.querySelector('.label-chosen').classList.add('active'); 
+                    } else { el.style.transform = `translateX(${dir * 150}%)`; setTimeout(() => { wrapper.remove(); if(!document.querySelector('.swipe-card-wrapper')) resetUI(); }, 300); }
                 } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; }
             });
         }
-        function resetUI() { 
-            document.getElementById('swiper-overlay').style.display = 'none'; 
-            document.getElementById('main-ui').classList.remove('blur-mode'); 
-        }
+        function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
 
         window.onload = () => {
             initLocationWatch(); updateDistricts(); updateUsageDisplay();
@@ -477,8 +539,10 @@
             const bg = document.getElementById('bg-container'); 
             images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i===0?' active':''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(div); });
             setInterval(() => { 
-                let active = document.querySelector('.bg-slide.active'); if(!active) return;
-                let next = active.nextElementSibling || document.querySelector('.bg-slide');
+                let slides = document.querySelectorAll('.bg-slide');
+                let active = document.querySelector('.bg-slide.active');
+                if(!active) return;
+                let next = active.nextElementSibling || slides[0];
                 active.classList.remove('active'); next.classList.add('active');
             }, 6000);
         };
