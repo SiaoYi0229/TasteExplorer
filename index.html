@@ -419,26 +419,8 @@
         console.error("Logic Error:", e);
         return { error: "搜尋校對失敗，請稍後重試。" };
     }
-
-        let text = result.candidates[0].content.parts[0].text;
-        
-        // 清理 AI 回傳的文字（移除 Markdown 標記和可能的引用）
-        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
-        
-        if (!jsonMatch) {
-            console.warn("Raw AI Text:", text); // 除錯用
-            throw new Error("JSON 解析失敗");
-        }
-        
-        return { data: JSON.parse(jsonMatch[0]) };
-    } catch (e) {
-        console.error("Search Logic Error:", e);
-        return { error: "搜尋校對失敗。請檢查您的 API Key 或稍後再試一次。" };
-    }
 }
         
-}
         // --- 4. UI 渲染 100% 還原 ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
