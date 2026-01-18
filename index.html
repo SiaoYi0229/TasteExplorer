@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
-    <!-- ★ 消除狀態列與底部黑邊的關鍵設定 ★ -->
+    <!-- 全螢幕滲透設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -12,7 +12,7 @@
     <link rel="icon" href="favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="favicon.png">
     <style>
-        /* --- 1. 核心樣式：100% 原封不動 --- */
+        /* --- 1. 核心樣式：100% 還原原始配色 --- */
         :root {
             --primary-orange: #FF6600;
             --glass-bg: rgba(25, 25, 25, 0.85);
@@ -23,17 +23,16 @@
             --accent-yellow: #FFCC00;
         }
 
-        html, body { overscroll-behavior-y: none; height: 100dvh; overflow: hidden; position: fixed; width: 100%; margin: 0; padding: 0; background-color: #000; }
-        html { font-size: 14px; } 
+        /* ★ 全滿版背景優化：頂部底部不留黑 ★ */
+        html, body { overscroll-behavior-y: none; height: 100%; width: 100%; overflow: hidden; position: fixed; margin: 0; padding: 0; background-color: #000; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
         body { color: #fff; display: flex; align-items: center; justify-content: center; }
 
-        /* 背景修正：確保從頭到腳完全填滿，不留黑邊 */
-        #bg-container { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        #bg-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
         .bg-slide { position: absolute; width: 100%; height: 100%; background-size: cover; background-position: center; opacity: 0; transition: opacity 1s; }
         .bg-slide.active { opacity: 0.6; }
 
-        /* --- 2. API 設定頁面：恢復原始連結與文字 --- */
+        /* API 設定頁面 */
         #api-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.5); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
@@ -44,12 +43,12 @@
         .api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
         .api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-        /* --- 3. 佈局核心 --- */
+        /* 佈局核心：避開安全區 */
         .container { 
             width: 95%; max-width: 357px; height: 100dvh; z-index: 10; 
             display: flex; flex-direction: column; 
-            justify-content: space-evenly; 
-            align-items: center; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; position: relative; 
+            justify-content: space-evenly; align-items: center; 
+            padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; position: relative; 
         }
         .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
@@ -62,7 +61,6 @@
             width: 100%; background: rgba(20, 20, 20, 0.75); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); 
             border-radius: 24px; padding: 18px; border: 1px solid var(--glass-border); 
             flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .location-status {
@@ -70,57 +68,48 @@
             padding: 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
             border: 1px solid transparent; cursor: pointer; transition: 0.3s; margin-bottom: 5px;
         }
-        .location-status.active-mode { 
-            background: rgba(255, 204, 0, 0.15) !important; color: var(--accent-yellow) !important;
-            border-color: rgba(255, 204, 0, 0.4); box-shadow: 0 0 15px rgba(255, 204, 0, 0.1); 
-        }
+        .location-status.active-mode { background: rgba(255, 204, 0, 0.15) !important; color: var(--accent-yellow) !important; border-color: rgba(255, 204, 0, 0.4); }
         .location-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; animation: pulse 2s infinite; }
 
         .hide-field { display: none !important; }
-
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .full-width { grid-column: span 2; }
         label { font-size: 0.75rem; color: #ffffff; margin-bottom: 4px; display: block; font-weight: 600; }
         .input-box { background: var(--input-bg); border-radius: 10px; height: 38px; display: flex; align-items: center; padding: 0 10px; border: 1px solid transparent; transition: 0.3s; }
         
-        /* ★ 刪除下拉箭頭 ★ */
+        /* 移除選單箭頭 */
         select { 
             background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; 
-            appearance: none; -webkit-appearance: none; /* 徹底移除箭頭 */
-            cursor: pointer; 
+            appearance: none; -webkit-appearance: none; cursor: pointer; 
         }
-        select option { background-color: #222; }
 
         .toggle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
         .toggle-btn { background: var(--input-bg); height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; font-size: 0.85rem; transition: 0.3s; }
         .toggle-btn.selected { background: rgba(255,102,0,0.2); border-color: var(--primary-orange); color: var(--primary-orange); font-weight: bold; }
-        #btn-open.selected { background: rgba(46,204,113,0.15); border-color: #2ecc71; color: #2ecc71; }
 
         .footer-action { width: 100%; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
         
-        /* ★ 探索時保持亮眼橘色 ★ */
-        .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); transition: 0.3s; }
-        .cta-button:disabled { opacity: 0.9; cursor: not-allowed; } /* 保持色彩不變灰 */
+        /* 探索時保持色澤 */
+        .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); }
+        .cta-button:disabled { opacity: 0.9; cursor: not-allowed; } 
         
         .usage-hint { font-size: 0.85rem; opacity: 0.7; color: #ffffff; font-weight: 500; flex: 0 0 auto; }
 
-        /* --- 5. 卡片系統：100% 原始樣式還原 --- */
+        /* --- 卡片系統：100% 還原第一份樣式與設定 --- */
         #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
         .card-stack { 
             width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; 
             overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; 
             scrollbar-width: none; -ms-overflow-style: none; /* 隱藏右側拉霸 */
         }
-        .card-stack::-webkit-scrollbar { display: none; } /* 隱藏 Chrome 拉霸 */
+        .card-stack::-webkit-scrollbar { display: none; }
 
         .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
         .swipe-card { width: 100%; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border); padding: 20px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
 
-        /* Nope/Like 的透明邊框小提示樣式 */
         .swipe-hints { position: absolute; top: 12px; left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 15px; pointer-events: none; z-index: 5; }
         .hint-item { font-size: 0.65rem; font-weight: bold; color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* 大標籤樣式 100% 還原倾斜角度 */
         .swipe-label { position: absolute; top: 30px; padding: 5px 15px; border: 4px solid; border-radius: 10px; font-size: 2rem; font-weight: 900; text-transform: uppercase; opacity: 0; pointer-events: none; z-index: 10; }
         .label-like { right: 20px; color: #2ecc71; border-color: #2ecc71; transform: rotate(15deg); }
         .label-nope { left: 20px; color: #e74c3c; border-color: #e74c3c; transform: rotate(-15deg); }
@@ -129,18 +118,12 @@
 
         .card-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
         .badge-rating { background: var(--accent-yellow); color: #000; }
-        .badge-price { background: rgba(255,255,255,0.1); color: #eee; }
         .badge-distance { background: var(--primary-orange); color: #fff; }
-
-        .info-row { font-size: 0.85rem; display: flex; gap: 6px; color: #ddd; line-height: 1.4; }
-        .info-label { color: var(--primary-orange); font-weight: bold; flex-shrink: 0; }
-        .card-summary { font-size: 0.88rem; font-style: italic; opacity: 0.85; border-left: 2px solid var(--primary-orange); padding-left: 10px; margin: 5px 0; }
         .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; }
-        
-        .close-swiper { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 40px; border-radius: 50px; cursor: pointer; font-weight: bold; backdrop-filter: blur(10px); margin: 20px 0 40px 0; flex-shrink: 0; }
+        .close-swiper { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 12px 40px; border-radius: 50px; cursor: pointer; font-weight: bold; margin-top: 20px; }
 
         #loader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
-        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top: 5px solid var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite !important; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top: 5px solid var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -212,10 +195,8 @@
         <div id="usage-text" class="usage-hint">今日剩餘次數：-- 次</div>
     </div>
 
-    <div id="swiper-overlay"><div class="card-stack" id="card-stack"></div></div>
-
     <script>
-        // --- 核心數據：100% 完整保留 ---
+        // --- 核心數據 100% 保留 ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
@@ -232,16 +213,13 @@
         const airportMap = { 'Taipei': { '松山區': ['台北松山機場'] }, 'Taoyuan': { '大園區': ['桃園國際機場'] }, 'Taichung': { '沙鹿區': ['台中國際機場'] }, 'Kaohsiung': { '小港區': ['高雄小港機場'] }, 'Penghu': { '湖西鄉': ['澎湖機場'] }, 'Kinmen': { '金湖鎮': ['金門機場'] }, 'Lienchiang': { '南竿鄉': ['馬祖南竿機場'] } };
         const mrtMap = { 'Taipei': { '中正區': ['台北車站', '善導寺', '忠孝新生', '中正紀念堂', '古亭', '西門', '台大醫院'], '萬華區': ['西門', '龍山寺'], '大安區': ['忠孝復興', '忠孝敦化', '國父紀念館', '信義安和', '大安', '科技大樓', '六張犁', '公館', '東門'], '信義區': ['市政府', '永春', '後山埤', '象山', '台北101/世貿'], '中山區': ['中山', '雙連', '民權西路', '圓山', '松江南京', '行天宮', '中山國小', '大直', '劍南路'], '松山區': ['南京復興', '台北小巨蛋', '南京三三民', '松山'], '大同區': ['大橋頭', '中山', '圓山', '民權西路'], '士林區': ['劍潭', '士林', '芝山', '明德'], '北投區': ['石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡', '竹圍', '紅樹林', '淡水'], '內湖區': ['西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖'], '南港區': ['南港', '南港展覽館', '南港軟體園區', '昆陽'], '文山區': ['動物園', '木柵', '萬芳醫院', '萬芳社區', '景美', '萬隆'] }, 'NewTaipei': { '板橋區': ['板橋', '府中', '新埔', '江子翠', '亞東醫院'], '三重區': ['三重', '菜寮', '台北橋', '三重國小', '三和國中', '徐匯中學'], '中和區': ['景安', '南勢角', '永安市場', '中和'], '永和區': ['頂溪', '永安市場'], '新莊區': ['新莊', '輔大', '丹鳳', '迴龍', '頭前庄'], '新店區': ['新店', '七張', '大坪林', '小碧潭', '新店區公所'], '淡水區': ['淡水', '紅樹林', '竹圍'], '林口區': ['林口'] } };
 
-        // --- 核心邏輯 ---
-
         function calculateDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "未知";
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return d < 1 ? `${(d * 1000).toFixed(0)}m` : `${d.toFixed(1)}km`;
+            const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+            return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) < 1) ? `${(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)) * 1000).toFixed(0)}m` : `${(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1)}km`;
         }
 
         function initLocationWatch() {
@@ -338,85 +316,45 @@
             try {
                 const now = new Date();
                 const data = {
-                    userApiKey: getStoredKey(),
-                    city: isNearbyMode ? "" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    apiKey: getStoredKey(),
+                    city: isNearbyMode ? "座標附近" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
                     district: isNearbyMode ? "" : document.getElementById('district').value,
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
                     budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
-                    mrtStation: isNearbyMode ? "" : (document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : ""),
-                    transportType: isNearbyMode ? "GPS" : document.getElementById('transport').value,
-                    isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
-                    isOpen: document.getElementById('btn-open').classList.contains('selected'),
                     userTime: `${now.getHours()}:${now.getMinutes()}`,
                     lat: userCoords.lat, lng: userCoords.lng
                 };
 
                 const res = await getAiRecommendation(data);
-                
-                if(res.error) { 
-                    alert(res.error); 
-                    ui.classList.remove('blur-mode');
-                } else if(res.data && res.data.length > 0) {
-                    const keyId = "KEY_" + data.userApiKey.slice(-10);
+                if(res.error) { alert(res.error); } 
+                else if(res.data && res.data.length > 0) {
+                    const keyId = "KEY_" + data.apiKey.slice(-10);
                     localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
                     updateUsageDisplay();
                     renderCards(res.data);
-                } else { 
-                    alert("🔍 未能搜尋到符合條件的店家，建議稍微放寬條件再試一次。"); 
-                    ui.classList.remove('blur-mode');
-                }
-            } catch(e) { 
-                alert("搜尋連線異常。"); 
-                ui.classList.remove('blur-mode');
-            } finally { 
-                loader.style.display = 'none'; 
-                btn.disabled = false; 
-            }
+                } else { alert("🔍 找不到符合的店家。"); }
+            } catch(e) { alert("連線發生異常。"); } finally { loader.style.display = 'none'; btn.disabled = false; }
         }
 
-        // ★ 核心搜尋邏輯：AI 提案 + Google 驗證，並使用強力 JSON 清洗 ★
         async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
-            let loc = isNearbyMode ? `座標 (${req.lat}, ${req.lng}) 附近` : `${req.city}${req.district}${req.mrtStation?'鄰近'+req.mrtStation+'站':''}`;
-
-            const prompt = `你是美食搜尋助手。任務如下：
-                1. 首先列出 5 間符合「${loc}」、「${req.food}」類別、用途「${req.purpose}」、預算「${req.budget}」的店家。
-                2. 立刻啟動 Google Search 聯網核對真實地址、評分，並確認現在台灣時間 (${req.userTime}) 是否營業中。
-                3. 如果發現店家已歇業，請找另一間替代。
-
-                輸出規範：
-                - 只回傳 JSON 陣列。
-                - 禁止 Markdown (\`\`\`json) 或搜尋標記(如 [1])。
-                - 必須包含真實的 lat, lng 數字。
-
-                JSON 結構：
-                [{ "name":"官方店名", "rating":"評分", "hours":"營業時段", "price":"價位", "signature":"推薦必點", "review_summary":"短評", "address":"地址", "lat": 緯度數字, "lng": 經度數字 }]`;
-
-            const requestBody = {
-                contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search: {} }] 
-            };
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.apiKey}`;
+            let loc = isNearbyMode ? `座標(${req.lat}, ${req.lng})` : `${req.city}${req.district}`;
+            const prompt = `任務：啟動 Google Search。先列出 5 間符合「${loc}附近」、「${req.food}」類型、「${req.purpose}」目的與預算「${req.budget}」的店家。核對真實性、現在(${req.userTime})是否營業。回傳 JSON 陣列，禁止 Markdown 或標記號如 [1]。結構：[{ "name":"店名", "rating":"評分", "hours":"營業時段", "price":"價位", "signature":"必點", "review_summary":"短評", "address":"地址", "lat": 緯度數字, "lng": 經度數字 }]`;
+            const requestBody = { contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] };
 
             try {
                 const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
                 const result = await response.json();
+                
+                if (!result.candidates || !result.candidates[0].content) throw new Error("Struct Fail");
+                
                 let text = result.candidates[0].content.parts[0].text;
-                
-                // ★ 強力清洗與截取 JSON 內容 ★
-                text = text.replace(/\[\d+(,\s*\d+)*\]/g, ""); // 移除引用號 [1], [1,2]
-                text = text.replace(/【\d+】/g, "");
-                text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-                
-                const startIdx = text.indexOf('[');
-                const endIdx = text.lastIndexOf(']');
-                if (startIdx === -1 || endIdx === -1) throw new Error("Format Error");
-                
-                const jsonContent = text.substring(startIdx, endIdx + 1);
-                return { data: JSON.parse(jsonContent) };
-            } catch (e) {
-                return { error: "解析資料失敗，請再試一次。" };
-            }
+                text = text.replace(/\[\d+\]/g, "").replace(/【\d+】/g, "").replace(/```json/g, "").replace(/```/g, "").trim();
+                const s = text.indexOf('['); const e = text.lastIndexOf(']');
+                if (s === -1) return { data: [] };
+                return { data: JSON.parse(text.substring(s, e + 1)) };
+            } catch (e) { return { error: "解析資料失敗。" }; }
         }
         
         function renderCards(restaurants) {
@@ -438,14 +376,12 @@
                         <span class="card-badge badge-rating">⭐ ${res.rating}</span>
                         <span class="card-badge badge-distance">📍 ${distStr}</span>
                     </div>
-                    <div class="info-row"><span>🕒 營業：${res.hours}</span></div>
-                    <div class="info-row"><span>🔥 招牌：${res.signature}</span></div>
+                    <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
+                    <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
                     <div class="card-summary">"${res.review_summary}"</div>
                     <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看地圖</a>
                 `;
-                wrapper.appendChild(card); 
-                stack.appendChild(wrapper); 
-                initSwipe(card, wrapper);
+                wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper);
             });
             const closeBtn = document.createElement('button');
             closeBtn.className = 'close-swiper'; closeBtn.innerText = '← 返回調整'; closeBtn.onclick = resetUI;
@@ -470,12 +406,12 @@
                 if (Math.abs(moveX) > 100) { 
                     const dir = moveX > 0 ? 1 : -1;
                     if (dir === 1 && cards.length === 1) { 
-                        // ★ 最後一張且 LIKE -> 蓋大印章 ★
+                        // 最後一張且 LIKE -> 蓋印章，不動
                         el.style.transform = 'translateX(0) rotate(0deg)'; 
                         likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0;
                         el.querySelector('.label-chosen').classList.add('active'); 
                     } else { 
-                        // ★ 其他情況移除卡片，如果空了就回首頁 ★
+                        // 其他移除，若為最後一張且滑掉則回主頁
                         el.style.transform = `translateX(${dir * 150}%)`; 
                         setTimeout(() => { 
                             wrapper.remove(); 
@@ -485,10 +421,7 @@
                 } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; }
             });
         }
-        function resetUI() { 
-            document.getElementById('swiper-overlay').style.display = 'none'; 
-            document.getElementById('main-ui').classList.remove('blur-mode'); 
-        }
+        function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
 
         window.onload = () => {
             initLocationWatch(); updateDistricts(); updateUsageDisplay();
