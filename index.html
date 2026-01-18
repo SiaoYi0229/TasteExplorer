@@ -38,12 +38,13 @@
         .api-input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 15px; color: white; font-size: 1rem; margin-bottom: 15px; text-align: center; }
         .api-save-btn { width: 100%; background: var(--primary-orange); color: white; border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; }
 
-        /* --- 3. 佈局核心：平均分配排版 --- */
+        /* --- 3. 佈局核心 --- */
         .container { 
             width: 95%; max-width: 357px; height: 100dvh; z-index: 10; 
             display: flex; flex-direction: column; 
-            justify-content: space-evenly; /* 自動平均分配 標題、卡片、按鈕、次數 的距離 */
+            justify-content: space-evenly; 
             align-items: center; padding: 10px 0; position: relative; 
+            transition: transform 0.3s ease, filter 0.3s ease;
         }
         .container.blur-mode { filter: blur(15px) brightness(0.4); transform: scale(0.95); pointer-events: none; }
 
@@ -90,7 +91,6 @@
         .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); transition: 0.3s; }
         .cta-button:disabled { background: #444; box-shadow: none; cursor: not-allowed; opacity: 0.6; }
         
-        /* 次數文字：不設固定 margin，由 container space-evenly 調配分配 */
         .usage-hint { font-size: 0.85rem; opacity: 0.7; color: #ffffff; font-weight: 500; flex: 0 0 auto; }
 
         /* --- 5. 推薦卡片滑動系統 --- */
@@ -193,8 +193,12 @@
         <div id="usage-text" class="usage-hint">今日剩餘次數：-- 次</div>
     </div>
 
+    <div id="swiper-overlay">
+        <div class="card-stack" id="card-stack"></div>
+    </div>
+
     <script>
-        // --- 核心數據 100% 還原自第一份 ---
+        // --- 核心數據 100% 還原 ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
@@ -211,7 +215,8 @@
         const airportMap = { 'Taipei': { '松山區': ['台北松山機場'] }, 'Taoyuan': { '大園區': ['桃園國際機場'] }, 'Taichung': { '沙鹿區': ['台中國際機場'] }, 'Kaohsiung': { '小港區': ['高雄小港機場'] }, 'Penghu': { '湖西鄉': ['澎湖機場'] }, 'Kinmen': { '金湖鎮': ['金門機場'] }, 'Lienchiang': { '南竿鄉': ['馬祖南竿機場'] } };
         const mrtMap = { 'Taipei': { '中正區': ['台北車站', '善導寺', '忠孝新生', '中正紀念堂', '古亭', '西門', '台大醫院'], '萬華區': ['西門', '龍山寺'], '大安區': ['忠孝復興', '忠孝敦化', '國父紀念館', '信義安和', '大安', '科技大樓', '六張犁', '公館', '東門'], '信義區': ['市政府', '永春', '後山埤', '象山', '台北101/世貿'], '中山區': ['中山', '雙連', '民權西路', '圓山', '松江南京', '行天宮', '中山國小', '大直', '劍南路'], '松山區': ['南京復興', '台北小巨蛋', '南京三三民', '松山'], '大同區': ['大橋頭', '中山', '圓山', '民權西路'], '士林區': ['劍潭', '士林', '芝山', '明德'], '北投區': ['石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡', '竹圍', '紅樹林', '淡水'], '內湖區': ['西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖'], '南港區': ['南港', '南港展覽館', '南港軟體園區', '昆陽'], '文山區': ['動物園', '木柵', '萬芳醫院', '萬芳社區', '景美', '萬隆'] }, 'NewTaipei': { '板橋區': ['板橋', '府中', '新埔', '江子翠', '亞東醫院'], '三重區': ['三重', '菜寮', '台北橋', '三重國小', '三和國中', '徐匯中學'], '中和區': ['景安', '南勢角', '永安市場', '中和'], '永和區': ['頂溪', '永安市場'], '新莊區': ['新莊', '輔大', '丹鳳', '迴龍', '頭前庄'], '新店區': ['新店', '七張', '大坪林', '小碧潭', '新店區公所'], '淡水區': ['淡水', '紅樹林', '竹圍'], '林口區': ['林口'] } };
 
-        // 2. 定位邏輯
+        // --- 核心邏輯還原與補強 ---
+
         function calculateDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "未知";
             const R = 6371;
@@ -283,28 +288,16 @@
             }
         }
 
-        // --- 3. 搜尋邏輯強化：Grounding 與 成功才扣費 ---
         function getStoredKey() { return localStorage.getItem('EXPLORER_FINAL_SECURE_KEY') || ""; }
         function saveApiKey() { const k = document.getElementById('api-key-input').value.trim(); if(k) { localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', k); document.getElementById('api-overlay').style.display='none'; updateUsageDisplay(); } }
-
-        function getUsageCount() {
-            const key = getStoredKey();
-            if (!key) return 0;
-            const keyId = "KEY_" + key.slice(-10);
-            return parseInt(localStorage.getItem('COUNT_' + keyId) || '0');
-        }
-
-        function updateUsageDisplay() {
-            const count = getUsageCount();
-            document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`;
-            const btn = document.getElementById('search-btn');
-            if (count >= DAILY_LIMIT) { btn.disabled = true; btn.innerText = "今日次數已滿"; } else { btn.disabled = false; btn.innerText = "開始探索美食"; }
-        }
+        function getUsageCount() { const key = getStoredKey(); if (!key) return 0; const keyId = "KEY_" + key.slice(-10); return parseInt(localStorage.getItem('COUNT_' + keyId) || '0'); }
+        function updateUsageDisplay() { const count = getUsageCount(); document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`; const btn = document.getElementById('search-btn'); if (count >= DAILY_LIMIT) { btn.disabled = true; btn.innerText = "今日次數已滿"; } else { btn.disabled = false; btn.innerText = "開始探索美食"; } }
 
         async function handleSearchClick() {
             if (!getStoredKey()) { document.getElementById('api-overlay').style.display = 'flex'; return; }
-            if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日次數已滿，請明日再來。"); return; }
+            if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日次數已滿。"); return; }
 
+            // --- 100% 還原：判斷捷運/高鐵/機場是否存在 ---
             if (!isNearbyMode) {
                 const cityKey = document.getElementById('city').value;
                 const cityName = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
@@ -316,20 +309,26 @@
                 if (transport === 'hsr' && !hasHSR.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有高鐵。`); return; }
                 if (transport === 'airport' && !hasAirport.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有機場。`); return; }
             }
+
             startSearch();
         }
 
         async function startSearch() {
             const loader = document.getElementById('loader');
             const btn = document.getElementById('search-btn');
+            const ui = document.getElementById('main-ui');
+            
             if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
-            btn.disabled = true; loader.style.display = 'flex';
+
+            btn.disabled = true; 
+            loader.style.display = 'flex';
+            ui.classList.add('blur-mode');
+
             try {
                 const now = new Date();
-                const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
                 const data = {
                     userApiKey: getStoredKey(),
-                    city: isNearbyMode ? "精確中心" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    city: isNearbyMode ? "定位中心" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
                     district: isNearbyMode ? `座標(${userCoords.lat}, ${userCoords.lng})` : document.getElementById('district').value,
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
@@ -338,94 +337,77 @@
                     transportType: isNearbyMode ? "GPS" : document.getElementById('transport').value,
                     isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
                     isOpen: document.getElementById('btn-open').classList.contains('selected'),
-                    userTime: timeStr,
+                    userTime: `${now.getHours()}:${now.getMinutes()}`,
                     lat: userCoords.lat, lng: userCoords.lng
                 };
 
                 const res = await getAiRecommendation(data);
-                if(res.error) { alert(res.error); } 
-                else if(res.data && res.data.length > 0) {
-                    // --- 成功獲取資料後才扣費 ---
+                
+                if(res.error) { 
+                    alert(res.error); 
+                    ui.classList.remove('blur-mode'); // 失敗時跳回
+                } else if(res.data && res.data.length > 0) {
                     const keyId = "KEY_" + data.userApiKey.slice(-10);
                     localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
                     updateUsageDisplay();
                     renderCards(res.data); 
-                } else { alert("🔍 範圍內無真實店家資料。"); }
-            } catch(e) { alert("搜尋發生異常。"); } finally { loader.style.display = 'none'; btn.disabled = false; }
+                } else { 
+                    alert("🔍 搜尋不到結果，請調整條件試試。"); 
+                    ui.classList.remove('blur-mode');
+                }
+            } catch(e) { 
+                alert("發生未預期的異常。"); 
+                ui.classList.remove('blur-mode');
+            } finally { 
+                loader.style.display = 'none'; 
+                btn.disabled = false; 
+            }
         }
 
         async function getAiRecommendation(req) {
-    // 保持使用 gemini-2.5-flash
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
-    
-    let distDesc = "";
-    if (isNearbyMode) {
-        distDesc = `位置：以座標 (${req.lat}, ${req.lng}) 為中心，半徑 1 公里內。`;
-    } else if (req.mrtStation) {
-        distDesc = `位置：以「${req.mrtStation}」為中心，半徑步行 10 分鐘距離內（約 800m）。`;
-    } else {
-        distDesc = `位置：鎖定「${req.city}${req.district}」行政區。`;
-    }
+            // 維持使用 gemini-2.5-flash
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
+            
+            let distDesc = isNearbyMode ? `以座標 (${req.lat}, ${req.lng}) 為中心 1km 內` : `位置：${req.city}${req.district} ${req.mrtStation?'(鄰近'+req.mrtStation+'站)':''}`;
 
-    const prompt = `你現在是 Google Maps 實時聯網搜尋搬運工。
-        搜尋任務：符合種類「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」的店家。
-        
-        【聯網協議】：
-        1. 啟動 Google Search 聯網工具搜尋。
-        2. ${distDesc}
-        3. 【擷取官方名】：從 Google 地圖標籤擷取「官方正式店名」。
-        4. 【數據核對】：以此官方名稱重新比對其「非歇業」狀態、營業時間（現在:${req.userTime}）以及精確座標 lat/lng。
-        5. 【禁止引用】：回傳內容中禁止包含任何 [1], [2] 這種來源編號標記。
+            const prompt = `你是美食搜尋助手。任務：利用 Google Search 聯網工具搜尋真實存在的店家。
+                要求符合種類「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」。
+                範圍：${distDesc}。確認現在(${req.userTime})是否營業。
+                
+                回傳 JSON 格式列表：
+                [{ "name":"店名", "rating":"評分", "hours":"營業時間", "price":"價位", "signature":"招牌菜", "review_summary":"一句話短評", "address":"地址", "lat": 緯度, "lng": 經度 }]
+                
+                注意：嚴禁回傳 Markdown 語法或搜尋標記(如 [1], [2])。僅回傳純 JSON 陣列。`;
 
-        只回傳 JSON 格式，不准額外文字：
-        [{ "name":"官方真實店名", "rating":"評分", "hours":"營業時間", "price":"價位", "signature":"推薦", "review_summary":"短評", "address":"官方地址", "lat": 緯度, "lng": 經度 }]`;
+            const requestBody = {
+                contents: [{ parts: [{ text: prompt }] }],
+                tools: [{ google_search: {} }] 
+            };
 
-    // 核心修正：將 google_search_retrieval 改為 google_search
-    const requestBody = {
-        contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ google_search: {} }] 
-    };
+            try {
+                const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
+                const result = await response.json();
 
-    try {
-        const response = await fetch(url, { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify(requestBody) 
-        });
-
-        const result = await response.json();
-
-        if (result.error) {
-            console.error("API Error Detail:", result.error);
-            return { error: `API 錯誤: ${result.error.message}` };
-        }
-
-        if (!result.candidates || !result.candidates[0].content) {
-            return { error: "AI 未能回傳有效結果，請重新探索。" };
-        }
-
-        let text = result.candidates[0].content.parts[0].text;
-        
-        // 清理可能包含的 Markdown 語法或引用標記
-        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').replace(/\[\d+\]/g, '').trim();
-        const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
-        
-        if (!jsonMatch) {
-            throw new Error("JSON 解析失敗");
+                if (result.error) return { error: `API Error: ${result.error.message}` };
+                
+                let text = result.candidates[0].content.parts[0].text;
+                
+                // 清洗聯網產生的引用符號
+                text = text.replace(/\[\d+\]/g, ""); 
+                const jsonMatch = text.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) throw new Error("Format Error");
+                
+                return { data: JSON.parse(jsonMatch[0]) };
+            } catch (e) {
+                return { error: "解析資料失敗，請再試一次。" };
+            }
         }
         
-        return { data: JSON.parse(jsonMatch[0]) };
-    } catch (e) {
-        console.error("Logic Error:", e);
-        return { error: "搜尋校對失敗，請稍後重試。" };
-    }
-}
-        
-        // --- 4. UI 渲染 100% 還原 ---
         function renderCards(restaurants) {
-            document.getElementById('main-ui').classList.add('blur-mode');
-            const stack = document.getElementById('card-stack'); stack.innerHTML = '';
+            const stack = document.getElementById('card-stack'); 
+            stack.innerHTML = '';
             document.getElementById('swiper-overlay').style.display = 'flex';
+            
             restaurants.forEach((res) => {
                 const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
                 const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
@@ -443,9 +425,11 @@
                     <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
                     <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
                     <div class="card-summary">"${res.review_summary}"</div>
-                    <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看 Google 地圖</a>
+                    <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看地圖</a>
                 `;
-                wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length === 1);
+                wrapper.appendChild(card); 
+                stack.appendChild(wrapper); 
+                initSwipe(card, wrapper, res, restaurants.length === 1);
             });
             const closeBtn = document.createElement('button');
             closeBtn.className = 'close-swiper'; closeBtn.innerText = '← 返回調整'; closeBtn.onclick = resetUI;
@@ -471,7 +455,7 @@
                     if (isLastOne && dir === 1) { 
                         el.style.transform = 'translateX(0) rotate(0deg)'; 
                         likeLabel.style.opacity = 0; el.querySelector('.label-chosen').classList.add('active'); 
-                    } else { el.style.transform = `translateX(${dir * 150}%)`; setTimeout(() => wrapper.remove(), 300); }
+                    } else { el.style.transform = `translateX(${dir * 150}%)`; setTimeout(() => { wrapper.remove(); if(!document.querySelector('.swipe-card-wrapper')) resetUI(); }, 300); }
                 } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; }
             });
         }
