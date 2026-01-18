@@ -355,49 +355,84 @@
         }
 
         async function getAiRecommendation(req) {
-            // 模型鐵則：gemini-2.5-flash
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
-            
-            // 建立距離限制描述
-            let distDesc = "";
-            if (isNearbyMode) {
-                distDesc = `位置：以座標 (${req.lat}, ${req.lng}) 為中心，半徑 1 公里內。`;
-            } else if (req.mrtStation) {
-                distDesc = `位置：以「${req.mrtStation}」為中心，半徑步行 10 分鐘距離內（約 800m）。`;
-            } else {
-                distDesc = `位置：鎖定「${req.city}${req.district}」行政區。`;
-            }
+    // 1. 修正模型名稱 (目前穩定版為 gemini-1.5-flash)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.userApiKey}`;
+    
+    let distDesc = "";
+    if (isNearbyMode) {
+        distDesc = `位置：以座標 (${req.lat}, ${req.lng}) 為中心，半徑 1 公里內。`;
+    } else if (req.mrtStation) {
+        distDesc = `位置：以「${req.mrtStation}」為中心，半徑步行 10 分鐘距離內（約 800m）。`;
+    } else {
+        distDesc = `位置：鎖定「${req.city}${req.district}」行政區。`;
+    }
 
-            const prompt = `你現在是 Google Maps 的實時聯網搜尋搬運工。
-                搜尋任務：符合種類「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」的店家。
-                
-                【聯網正名單一驗證協議】：
-                1. 啟動 Google Search 聯網工具搜尋。
-                2. ${distDesc}
-                3. 【擷取官方名】：從 Google 地圖標籤擷取「官方正式店名」。禁止拼湊分店名稱或杜撰。
-                4. 【數據核對】：以此官方名稱重新比對其「非歇業」狀態、營業時間（現在:${req.userTime}）以及精確座標 lat/lng（小數點後 5 位）。
-                5. 座標偏移量必須符合上述半徑限制。
-                ${req.isHidden ? '6. 避開評論過多之連鎖店，優先回傳巷弄隱藏名店。' : ''}
+    const prompt = `你現在是 Google Maps 的實時聯網搜尋專家。
+        搜尋任務：請找出符合「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」的真實店家。
+        
+        【搜尋協議】：
+        1. 啟動 Google Search 聯網工具。
+        2. ${distDesc}
+        3. 【精確數據】：必須回傳該店家的官方店名、Google 地圖評分、大約價位、招牌菜，以及該店的精確經緯度座標 (Lat/Lng)。
+        4. 【狀態檢查】：確保該店目前非「永久停業」。
+        5. 【禁止引用編號】：回傳的 JSON 字串中「嚴禁」出現如 [1], [2] 這種引用標記。
 
-                只回傳 JSON 格式，不准額外文字：
-                [{ "name":"官方真實店名", "rating":"評分", "hours":"營業時間", "price":"價位", "signature":"推薦", "review_summary":"短評", "address":"官方地址", "lat": 緯度, "lng": 經度 }]`;
+        請嚴格回傳以下格式的 JSON 陣列，不要有任何額外說明文字：
+        [
+          { 
+            "name": "官方店名", 
+            "rating": "評分", 
+            "hours": "營業時間", 
+            "price": "價位", 
+            "signature": "推薦菜色", 
+            "review_summary": "一句話短評", 
+            "address": "完整地址", 
+            "lat": 數字緯度, 
+            "lng": 數字經度 
+          }
+        ]`;
 
-            const requestBody = {
-                contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search_retrieval: {} }]
-            };
+    const requestBody = {
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search_retrieval: {} }]
+    };
 
-            try {
-                const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
-                const result = await response.json();
-                if(result.error || !result.candidates) throw new Error();
-                let text = result.candidates[0].content.parts[0].text;
-                const jsonMatch = text.match(/\[[\s\S]*\]/);
-                if (!jsonMatch) throw new Error();
-                return { data: JSON.parse(jsonMatch[0]) };
-            } catch (e) { return { error: "AI 目前忙碌或資料校對失敗，請重試。" }; }
+    try {
+        const response = await fetch(url, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify(requestBody) 
+        });
+
+        const result = await response.json();
+
+        // 檢查 API 是否回傳錯誤 (例如 API Key 錯誤)
+        if (result.error) {
+            console.error("Gemini API Error:", result.error);
+            return { error: `API 錯誤: ${result.error.message}` };
         }
 
+        if (!result.candidates || result.candidates.length === 0) {
+            return { error: "AI 無法生成建議，請稍後再試。" };
+        }
+
+        let text = result.candidates[0].content.parts[0].text;
+        
+        // 清理 AI 回傳的文字（移除 Markdown 標記和可能的引用）
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const jsonMatch = cleanedText.match(/\[[\s\S]*\]/);
+        
+        if (!jsonMatch) {
+            console.warn("Raw AI Text:", text); // 除錯用
+            throw new Error("JSON 解析失敗");
+        }
+        
+        return { data: JSON.parse(jsonMatch[0]) };
+    } catch (e) {
+        console.error("Search Logic Error:", e);
+        return { error: "搜尋校對失敗。請檢查您的 API Key 或稍後再試一次。" };
+    }
+}
         // --- 4. UI 渲染 100% 還原 ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
