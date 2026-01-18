@@ -215,7 +215,7 @@
         const airportMap = { 'Taipei': { '松山區': ['台北松山機場'] }, 'Taoyuan': { '大園區': ['桃園國際機場'] }, 'Taichung': { '沙鹿區': ['台中國際機場'] }, 'Kaohsiung': { '小港區': ['高雄小港機場'] }, 'Penghu': { '湖西鄉': ['澎湖機場'] }, 'Kinmen': { '金湖鎮': ['金門機場'] }, 'Lienchiang': { '南竿鄉': ['馬祖南竿機場'] } };
         const mrtMap = { 'Taipei': { '中正區': ['台北車站', '善導寺', '忠孝新生', '中正紀念堂', '古亭', '西門', '台大醫院'], '萬華區': ['西門', '龍山寺'], '大安區': ['忠孝復興', '忠孝敦化', '國父紀念館', '信義安和', '大安', '科技大樓', '六張犁', '公館', '東門'], '信義區': ['市政府', '永春', '後山埤', '象山', '台北101/世貿'], '中山區': ['中山', '雙連', '民權西路', '圓山', '松江南京', '行天宮', '中山國小', '大直', '劍南路'], '松山區': ['南京復興', '台北小巨蛋', '南京三三民', '松山'], '大同區': ['大橋頭', '中山', '圓山', '民權西路'], '士林區': ['劍潭', '士林', '芝山', '明德'], '北投區': ['石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡', '竹圍', '紅樹林', '淡水'], '內湖區': ['西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖'], '南港區': ['南港', '南港展覽館', '南港軟體園區', '昆陽'], '文山區': ['動物園', '木柵', '萬芳醫院', '萬芳社區', '景美', '萬隆'] }, 'NewTaipei': { '板橋區': ['板橋', '府中', '新埔', '江子翠', '亞東醫院'], '三重區': ['三重', '菜寮', '台北橋', '三重國小', '三和國中', '徐匯中學'], '中和區': ['景安', '南勢角', '永安市場', '中和'], '永和區': ['頂溪', '永安市場'], '新莊區': ['新莊', '輔大', '丹鳳', '迴龍', '頭前庄'], '新店區': ['新店', '七張', '大坪林', '小碧潭', '新店區公所'], '淡水區': ['淡水', '紅樹林', '竹圍'], '林口區': ['林口'] } };
 
-        // --- 核心邏輯還原與補強 ---
+        // --- 核心邏輯修正 ---
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "未知";
@@ -297,7 +297,6 @@
             if (!getStoredKey()) { document.getElementById('api-overlay').style.display = 'flex'; return; }
             if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日次數已滿。"); return; }
 
-            // --- 100% 還原：判斷捷運/高鐵/機場是否存在 ---
             if (!isNearbyMode) {
                 const cityKey = document.getElementById('city').value;
                 const cityName = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
@@ -316,13 +315,11 @@
         async function startSearch() {
             const loader = document.getElementById('loader');
             const btn = document.getElementById('search-btn');
-            const ui = document.getElementById('main-ui');
             
             if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
 
             btn.disabled = true; 
-            loader.style.display = 'flex';
-            ui.classList.add('blur-mode');
+            loader.style.display = 'flex'; // 顯示轉圈圈，但此時背景(main-ui)仍是清晰的
 
             try {
                 const now = new Date();
@@ -345,19 +342,16 @@
                 
                 if(res.error) { 
                     alert(res.error); 
-                    ui.classList.remove('blur-mode'); // 失敗時跳回
                 } else if(res.data && res.data.length > 0) {
                     const keyId = "KEY_" + data.userApiKey.slice(-10);
                     localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
                     updateUsageDisplay();
-                    renderCards(res.data); 
+                    renderCards(res.data); // 只有成功取得資料後，才會執行模糊背景並顯示卡片
                 } else { 
                     alert("🔍 搜尋不到結果，請調整條件試試。"); 
-                    ui.classList.remove('blur-mode');
                 }
             } catch(e) { 
                 alert("發生未預期的異常。"); 
-                ui.classList.remove('blur-mode');
             } finally { 
                 loader.style.display = 'none'; 
                 btn.disabled = false; 
@@ -404,6 +398,9 @@
         }
         
         function renderCards(restaurants) {
+            // 在這裡執行模糊背景
+            document.getElementById('main-ui').classList.add('blur-mode');
+            
             const stack = document.getElementById('card-stack'); 
             stack.innerHTML = '';
             document.getElementById('swiper-overlay').style.display = 'flex';
