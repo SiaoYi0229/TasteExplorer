@@ -319,23 +319,22 @@
     // 絕對保留 gemini-2.5-flash
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-    const prompt = `你現在是美食百科全書。請從你的知識庫中檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」、預算「${cfg.budget}」且適合「${cfg.purpose}」的 6 家真實存在的店家。
+    const prompt = `你現在是美食專家。請從知識庫中檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」、預算分類為「${cfg.budget}」且適合「${cfg.purpose}」的店家。
     
-    【嚴格規則】：
-    1. 僅限挑選知名、長久經營、且你確信其位置與名稱正確的店家。
-    2. 禁止憑空想像或組合店名。如果資訊不足，寧可只給 3-4 家。
-    3. 輸出純 JSON 陣列，格式如下：
-       - name: 店名
-       - rating: 星等
-       - price: 價位 (💵, 💵💵, 💵💵💵)
-       - signature: 必點招牌
-       - review_summary: 評論摘要
-       - reason: 推薦理由 (說明為何適合${cfg.purpose})
-       - map_query: 搜尋關鍵字 (店名 + 城市)
+    【數量與價格要求】：
+    1. 數量：一般情況下「必須」回傳 6 家真實存在的店。只有在勾選「隱藏版」或「營業中」且該區真的沒店時才允許減少數量。
+    2. 價格格式：請根據預算分類提供估計的人均消費區間，格式為「數字~數字」(例如 200~400)，不要使用符號。
+    
+    【輸出內容】：
+    - name: 店名
+    - rating: 星等
+    - price: 價格區間 (如 300~600)
+    - signature: 必點招牌
+    - review_summary: 評論摘要
+    - reason: 推薦理由 (針對${cfg.purpose}說明)
+    - map_query: 搜尋關鍵字 (店名 + 行政區)
 
-    4. 禁止輸出：地址、座標、電話、營業時間、以及任何註腳文字。
-    
-    ${cfg.isHidden ? "優先挑選高分但低調的隱藏版。" : "挑選具代表性的熱門店。"} `;
+    【限制】：禁止發明店名。輸出純 JSON 陣列，不含註腳或地址。`;
 
     try {
         const response = await fetch(url, { 
@@ -343,10 +342,9 @@
             headers: { "Content-Type": "application/json" }, 
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: prompt }] }],
-                // 這裡拿掉了 tools: [{ google_search: {} }]，徹底解決忙碌問題
                 generationConfig: { 
                     response_mime_type: "application/json",
-                    temperature: 0.2 // 低隨機性，保證穩定度
+                    temperature: 0.4 // 稍微提高一點，讓 AI 能從資料庫撈出更多備選店家
                 }
             }) 
         });
@@ -355,14 +353,11 @@
         if (result.error) return { error: `API 錯誤: ${result.error.message}` };
 
         let text = result.candidates[0].content.parts[0].text;
-        
-        // 解析 JSON
         const start = text.indexOf('[');
         const end = text.lastIndexOf(']');
         const data = JSON.parse(text.substring(start, end + 1));
 
         return { data: data };
-
     } catch (e) { 
         return { error: "解析資料失敗，請重試一次。" }; 
     }
@@ -382,7 +377,7 @@
         const card = document.createElement('div'); 
         card.className = 'swipe-card';
         
-        // 100% 保留所有原始功能類別與 ID
+        // 移除 badge-distance (實體店標籤)，保留原始物理結構
         card.innerHTML = `
             <div class="swipe-hints">
                 <div class="hint-item">← NOPE</div>
@@ -396,17 +391,21 @@
             
             <div class="card-badges">
                 <span class="card-badge badge-rating">⭐ ${res.rating}</span>
-                <span class="card-badge badge-price">${res.price}</span>
-                <span class="card-badge badge-distance" style="background:#6c5ce7">實體店</span>
+                <span class="card-badge badge-price">NT$ ${res.price}</span>
             </div>
             
-            <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
+            <div class="info-row">
+                <span class="info-label">🔥 招牌</span>
+                <span>${res.signature}</span>
+            </div>
+            
             <div class="card-summary">"${res.review_summary}"</div>
+            
             <div class="info-row" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                <span class="info-label">💡 原因</span><span style="color:var(--accent-yellow)">${res.reason}</span>
+                <span class="info-label">💡 推薦</span>
+                <span style="color:var(--accent-yellow)">${res.reason}</span>
             </div>
             
-            <!-- 使用 map_query 保證在地圖上搜尋到正確的店 -->
             <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query)}" target="_blank">
                 🗺️ 打開地圖查看詳情
             </a>
@@ -414,7 +413,9 @@
         
         wrapper.appendChild(card); 
         stack.insertBefore(wrapper, stack.firstChild); 
-        initSwipe(card, wrapper, res); // 物理滑動保留
+        
+        // 保留滑動與蓋章功能
+        initSwipe(card, wrapper, res);
     });
 
     const closeBtn = document.createElement('button');
