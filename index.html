@@ -461,20 +461,42 @@ JSON 格式範例：
         return { error: e.message };
     }
 }
-        // --- 4. 渲染與卡片系統 (移除拉霸、最後一張右滑蓋章) ---
+        /* --- 4. 淘汰賽制卡片系統 (第一輪選中的進入下一輪，最後一張右滑蓋章) --- */
+        let activePool = [];   // 當前這一輪要顯示的店家
+        let likedPool = [];    // 使用者右滑（保留）的店家
+
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
-            const stack = document.getElementById('card-stack'); 
-            stack.innerHTML = '';
             document.getElementById('swiper-overlay').style.display = 'flex';
             
-            restaurants.forEach((res, index) => {
+            activePool = [...restaurants]; // 初始名單
+            likedPool = [];                // 清空喜歡池
+            
+            buildStack(); 
+        }
+
+        function buildStack() {
+            const stack = document.getElementById('card-stack'); 
+            stack.innerHTML = ''; 
+            
+            // 判斷是否已經到最後決選（只剩一張）
+            const isFinalSurvivor = (activePool.length === 1);
+
+            activePool.forEach((res, index) => {
                 const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
-                const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
-                const card = document.createElement('div'); card.className = 'swipe-card';
+                const wrapper = document.createElement('div'); 
+                wrapper.className = 'swipe-card-wrapper';
+                wrapper.style.zIndex = activePool.length - index; // 確保第一張在最上面
+
+                const card = document.createElement('div'); 
+                card.className = 'swipe-card';
                 card.innerHTML = `
-                    <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div>
-                    <div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div>
+                    <div class="swipe-hints">
+                        <div class="hint-item">${isFinalSurvivor ? '← 放棄' : '← 淘汰'}</div>
+                        <div class="hint-item">${isFinalSurvivor ? '就吃這間 →' : '保留 →'}</div>
+                    </div>
+                    <div class="swipe-label label-like">${isFinalSurvivor ? 'CHOSEN' : 'KEEP'}</div>
+                    <div class="swipe-label label-nope">NOPE</div>
                     <div class="label-chosen">🏆 最終首選</div>
                     <h3>${res.name}</h3>
                     <div class="card-badges">
@@ -487,21 +509,30 @@ JSON 格式範例：
                     <div class="card-summary">"${res.review_summary}"</div>
                     <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看地圖</a>
                 `;
+                
                 wrapper.appendChild(card); 
                 stack.appendChild(wrapper); 
-                initSwipe(card, wrapper, index === restaurants.length - 1);
+                initSwipe(card, wrapper, res, isFinalSurvivor);
             });
+
             const closeBtn = document.createElement('button');
-            closeBtn.className = 'close-swiper'; closeBtn.innerText = '← 返回調整'; closeBtn.onclick = resetUI;
+            closeBtn.className = 'close-swiper'; 
+            closeBtn.innerText = '← 返回搜尋'; 
+            closeBtn.onclick = resetUI;
             stack.appendChild(closeBtn); 
         }
 
-        function initSwipe(el, wrapper, isLastOne) {
+        function initSwipe(el, wrapper, restaurantData, isFinalSurvivor) {
             let startX, moveX = 0;
-            const likeLabel = el.querySelector('.label-like'); const nopeLabel = el.querySelector('.label-nope');
+            const likeLabel = el.querySelector('.label-like'); 
+            const nopeLabel = el.querySelector('.label-nope');
             const stamp = el.querySelector('.label-chosen');
 
-            el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; el.style.transition = 'none'; });
+            el.addEventListener('touchstart', (e) => { 
+                startX = e.touches[0].clientX; 
+                el.style.transition = 'none'; 
+            }, {passive: true});
+
             el.addEventListener('touchmove', (e) => { 
                 moveX = e.touches[0].clientX - startX;
                 if(Math.abs(moveX) > 10) {
@@ -509,25 +540,66 @@ JSON 格式範例：
                     likeLabel.style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0;
                     nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0;
                 }
-            });
+            }, {passive: true});
+
             el.addEventListener('touchend', () => { 
-                el.style.transition = '0.4s ease'; 
+                el.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; 
+                
                 if (Math.abs(moveX) > 100) { 
-                    const dir = moveX > 0 ? 1 : -1;
-                    // 邏輯：最後一張右滑蓋印章
-                    if (isLastOne && dir === 1) { 
-                        el.style.transform = 'translateX(0) rotate(0deg)'; 
-                        likeLabel.style.opacity = 0; stamp.classList.add('active'); 
-                    } else { 
-                        el.style.transform = `translateX(${dir * 150}%)`; 
-                        setTimeout(() => { wrapper.remove(); if(!document.querySelector('.swipe-card-wrapper')) resetUI(); }, 300); 
+                    const direction = moveX > 0 ? 'right' : 'left';
+
+                    if (direction === 'right') {
+                        if (isFinalSurvivor) {
+                            // 最後一張：蓋章
+                            el.style.transform = 'translateX(0) rotate(0deg)'; 
+                            likeLabel.style.opacity = 0; 
+                            stamp.classList.add('active');
+                        } else {
+                            // 第一輪：保留並飛走
+                            likedPool.push(restaurantData);
+                            el.style.transform = `translateX(150%) rotate(30deg)`;
+                            setTimeout(() => { wrapper.remove(); checkRoundStatus(); }, 300);
+                        }
+                    } else {
+                        // 左滑：淘汰
+                        el.style.transform = `translateX(-150%) rotate(-30deg)`;
+                        setTimeout(() => { wrapper.remove(); checkRoundStatus(); }, 300);
                     }
-                } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; }
+                } else { 
+                    el.style.transform = 'translateX(0) rotate(0deg)'; 
+                    likeLabel.style.opacity = 0; 
+                    nopeLabel.style.opacity = 0; 
+                }
+                moveX = 0;
             });
         }
 
-        function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
+        function checkRoundStatus() {
+            const remainingCards = document.querySelectorAll('.swipe-card-wrapper');
+            // 當畫面上這一輪的卡片都滑完時
+            if (remainingCards.length === 0) {
+                if (likedPool.length > 1) {
+                    // 進入下一輪決賽
+                    activePool = [...likedPool];
+                    likedPool = [];
+                    buildStack(); 
+                } else if (likedPool.length === 1) {
+                    // 只剩一個，直接進入最後一張模式
+                    activePool = [...likedPool];
+                    likedPool = [];
+                    buildStack();
+                } else {
+                    // 通通不喜歡
+                    alert("😿 都不喜歡嗎？試著換個心情重新搜尋吧！");
+                    resetUI();
+                }
+            }
+        }
 
+        function resetUI() { 
+            document.getElementById('swiper-overlay').style.display = 'none'; 
+            document.getElementById('main-ui').classList.remove('blur-mode'); 
+        }
         window.onload = () => {
             initLocationWatch(); updateDistricts(); updateUsageDisplay();
             const key = getStoredKey(); if(key) document.getElementById('api-key-input').value = key;
