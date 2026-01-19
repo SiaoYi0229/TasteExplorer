@@ -92,7 +92,7 @@
         .usage-hint { font-size: 0.85rem; opacity: 0.7; color: #ffffff; font-weight: 500; flex: 0 0 auto; }
 
         #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
-        .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
+        .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow-y: hidden; overflow-x: hidden; padding: 20px 0 120px 0; gap: 20px; }
         .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
         .swipe-card { width: 100%; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border); padding: 20px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
 
@@ -120,6 +120,7 @@
         #loader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); }
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,102,0,0.1); border-top: 5px solid var(--primary-orange); border-radius: 50%; animation: spin 1s linear infinite !important; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .swipe-card.stamped {transform: scale(1) !important;pointer-events: none; /* 鎖死卡片，不能再滑動 */box-shadow: 0 0 30px rgba(46, 204, 113, 0.4);}
     </style>
 </head>
 <body touch-action="none">
@@ -199,7 +200,8 @@
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
-        let keptRestaurants = []; // 儲存保留的店家
+        let keptRestaurants = []; 
+        let isFinalOne = false; // 是否進入加冕階段
         const images = ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1', 'https://images.unsplash.com/photo-1594046243098-0fceea9d451e', 'https://images.unsplash.com/photo-1563245372-f21724e3856d', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836', 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38'];
 
         // (城市與站點數據 100% 完整保留，包含上次補齊的台中、高雄、台鐵數據)
@@ -344,13 +346,14 @@
             alert(res.error); 
         } else if(res.data && res.data.length > 0) {
             incrementUsage();
-            keptRestaurants = []; // 重置決賽圈
-            renderCards(res.data, false); 
+            keptRestaurants = []; 
+            isFinalOne = false;
+            renderCards(res.data); 
         } else { 
-            alert("🔍 在此限制條件下找不到足夠店家，建議放寬預算或取消「營業中」限制。"); 
+            alert("🔍 搜尋不到店家，請調整條件。"); 
         }
     } catch(e) { 
-        alert("探索異常，請重試。"); 
+        alert("系統異常，請稍後再試。"); 
     } finally { 
         loader.style.display = 'none'; 
         btn.disabled = false; 
@@ -360,61 +363,46 @@
 async function getAiRecommendation(cfg) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-    // 嚴格執行流程：三層級空間判定
-    let spatialPrompt = "";
-    if (isNearbyMode) {
-        spatialPrompt = `【鐵律：GPS 模式】必須搜尋以座標 (${userCoords.lat}, ${userCoords.lng}) 為中心「半徑 1 公里內」的店家。`;
-    } else if (cfg.transport !== 'none' && cfg.station) {
-        spatialPrompt = `【鐵律：交通導向】必須搜尋離「${cfg.city}${cfg.station}」步行 800 公尺 (10分鐘) 內能抵達的店家。`;
-    } else {
-        spatialPrompt = `【鐵律：行政區模式】搜尋整個「${cfg.city}${cfg.district}」範圍內最出色的店家。`;
-    }
+    // 嚴格執行最原始設定的三層級空間判定 (GPS / 交通 / 行政區)
+    let spatialPrompt = isNearbyMode ? 
+        `以中心座標 (${userCoords.lat}, ${userCoords.lng}) 搜尋「1 公里內」店家。` : 
+        (cfg.transport !== 'none' && cfg.station ? `以「${cfg.city}${cfg.station}」為中心，搜尋「步行 800 公尺內」店家。` : `在「${cfg.city}${cfg.district}」全區範圍內搜尋。`);
 
-    const prompt = `你是美食專家。請利用 Google Search 搜尋台灣真實店家。
-        1. 空間限制：${spatialPrompt}
-        2. 數量：必須找滿 6 家店。${(cfg.isHidden || cfg.isOpenOnly) ? "(若條件極嚴苛，最少不得低於 3 家)" : ""}
-        3. 需求：類別「${cfg.food}」、用途「${cfg.purpose}」、預算「${cfg.budget}」。
-        4. ${cfg.isHidden ? "優先找 Google 評論不多但高分的隱藏版。" : "找當地最高評分的人氣名店。"}
-        5. ${cfg.isOpenOnly ? `即時核對：確認台灣時間 ${cfg.userTime} 該店營業中。` : ""}
+    const prompt = `你是美食專家。請用 Google Search 搜尋台灣真實店家：
+        1. 鐵律：${spatialPrompt}。
+        2. 數量鐵律：必須找滿 6 家店家。
+        3. 需求：類別「${cfg.food}」、目的「${cfg.purpose}」、預算「${cfg.budget}」。
+        4. ${cfg.isHidden ? "優先尋找隱藏版私房店。" : "挑選最高評分的人氣名店。"}
+        5. ${cfg.isOpenOnly ? `即時核對：確認台灣時間 ${cfg.userTime} 該店是否營業中。` : ""}
         6. 輸出：純 JSON 陣列，不含 Markdown。格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
 
     try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search: {} }]
-            })
-        });
-
+        const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] }) });
         const result = await response.json();
-        if (result.error) return { error: "⚠️ API 忙碌中，請等候一分鐘。" };
-
+        if (result.error) return { error: "⚠️ API 限制中，請稍候一分鐘。" };
         let text = result.candidates[0].content.parts[0].text;
         text = text.replace(/\[\d+\]/g, "").replace(/【\d+】/g, "").replace(/```json|```/g, "").trim();
-        const start = text.indexOf('[');
-        const end = text.lastIndexOf(']');
-        return { data: JSON.parse(text.substring(start, end + 1)) };
-    } catch (e) {
-        return { error: "連線超時，請點擊按鈕重試。" };
-    }
+        return { data: JSON.parse(text.substring(text.indexOf('['), text.lastIndexOf(']') + 1)) };
+    } catch (e) { return { error: "解析失敗，請重新點擊搜尋。" }; }
 }
-        // --- 5. 卡片系統與滑動邏輯 (進化版) ---
-        function renderCards(restaurants, isFinalRound) {
+
+// --- 卡片滑動與生存戰邏輯 ---
+function renderCards(restaurants) {
     document.getElementById('main-ui').classList.add('blur-mode');
     const stack = document.getElementById('card-stack'); 
     stack.innerHTML = '';
     document.getElementById('swiper-overlay').style.display = 'flex';
     
-    // 將卡片放入堆疊
+    // 判定是否為最後生存者
+    isFinalOne = (restaurants.length === 1);
+
     restaurants.forEach((res) => {
         const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
         const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
         const card = document.createElement('div'); card.className = 'swipe-card';
         card.innerHTML = `
-            <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">${isFinalRound ? 'CHOSEN' : 'LIKE'} →</div></div>
-            <div class="swipe-label label-keep">${isFinalRound ? 'CHOSEN' : 'LIKE'}</div>
+            <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">${isFinalOne ? 'CHOSEN' : 'LIKE'} →</div></div>
+            <div class="swipe-label label-like">${isFinalOne ? 'CHOSEN' : 'LIKE'}</div>
             <div class="swipe-label label-nope">NOPE</div>
             <div class="label-chosen">🏆 最終首選</div>
             <h3>${res.name}</h3>
@@ -430,14 +418,14 @@ async function getAiRecommendation(cfg) {
         `;
         wrapper.appendChild(card); 
         stack.insertBefore(wrapper, stack.firstChild); 
-        initSwipe(card, wrapper, res, isFinalRound);
+        initSwipe(card, wrapper, res);
     });
 
-    if (isFinalRound) {
-        const h = document.createElement('div');
-        h.style = "color:var(--accent-yellow); font-weight:bold; margin-bottom:10px;";
-        h.innerText = "✨ 進入決賽圈：挑選你的唯一 ✨";
-        stack.insertBefore(h, stack.firstChild);
+    if (isFinalOne) {
+        const hint = document.createElement('div');
+        hint.style = "color:var(--accent-yellow); font-weight:bold; margin-bottom:10px;";
+        hint.innerText = "👑 唯一生還者：右滑加冕 👑";
+        stack.insertBefore(hint, stack.firstChild);
     }
 
     const closeBtn = document.createElement('button');
@@ -445,20 +433,18 @@ async function getAiRecommendation(cfg) {
     stack.appendChild(closeBtn); 
 }
 
-function initSwipe(el, wrapper, resData, isFinalRound) {
+function initSwipe(el, wrapper, resData) {
     let startX, moveX = 0;
-    const likeLabel = el.querySelector('.label-keep'); 
+    const likeLabel = el.querySelector('.label-like'); 
     const nopeLabel = el.querySelector('.label-nope');
     const chosenStamp = el.querySelector('.label-chosen');
 
     el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; el.style.transition = 'none'; });
     el.addEventListener('touchmove', (e) => { 
         moveX = e.touches[0].clientX - startX;
-        const isLastOne = (document.querySelectorAll('.swipe-card-wrapper').length === 1);
-
         if(Math.abs(moveX) > 10) {
-            // 最後一張卡片右滑時：蓋章感（原地縮放），不移出螢幕
-            if (isLastOne && moveX > 0) {
+            if (isFinalOne && moveX > 0) {
+                // 最後一家右滑：原地縮放，展現蓋章感
                 el.style.transform = `scale(${1 + Math.min(moveX/500, 0.05)})`;
             } else {
                 el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`;
@@ -470,22 +456,21 @@ function initSwipe(el, wrapper, resData, isFinalRound) {
 
     el.addEventListener('touchend', () => { 
         el.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; 
-        const isLastOne = (document.querySelectorAll('.swipe-card-wrapper').length === 1);
 
-        if (moveX > 100) { // 右滑
-            if (isLastOne) {
-                // 最後一張：完成蓋章儀式
+        if (moveX > 100) { // 右滑：LIKE 或 CHOSEN
+            if (isFinalOne) {
+                // 唯一生還者：蓋章鎖定
                 el.style.transform = 'translateX(0) scale(1)';
+                el.classList.add('stamped'); // 觸發 CSS 鎖定 pointer-events
                 likeLabel.style.opacity = 0;
                 chosenStamp.classList.add('active');
-                keptRestaurants = [resData];
             } else {
-                // 進入決賽圈
+                // 晉級下一輪
                 keptRestaurants.push(resData);
                 el.style.transform = 'translateX(150%) rotate(30deg)';
                 setTimeout(() => { wrapper.remove(); checkStackState(); }, 300);
             }
-        } else if (moveX < -100) { // 左滑：淘汰
+        } else if (moveX < -100) { //淘汰
             el.style.transform = 'translateX(-150%) rotate(-30deg)';
             setTimeout(() => { wrapper.remove(); checkStackState(); }, 300);
         } else {
@@ -500,35 +485,16 @@ function checkStackState() {
     const remaining = document.querySelectorAll('.swipe-card-wrapper').length;
     if (remaining === 0) {
         if (keptRestaurants.length === 0) {
-            alert("😊 沒看到喜歡的？放寬預算或重新調整條件再探索一次！");
+            alert("😊 沒看到中意的？換個條件重新探索吧！");
             resetUI();
-        } else if (keptRestaurants.length > 1) {
-            // 還有複數選項，進入下一輪決賽
-            const finalists = [...keptRestaurants];
-            keptRestaurants = []; 
-            renderCards(finalists, true);
         } else {
-            // 剩下一家並已完成
-            resetUI();
+            // 將晉級名單重新渲染，系統會自動判定剩餘數量
+            const survivors = [...keptRestaurants];
+            keptRestaurants = []; 
+            renderCards(survivors);
         }
     }
 }
-
-        function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
-
-        // --- 6. 背景與啟動 ---
-        window.onload = () => {
-            initLocationWatch(); updateDistricts(); updateUsageDisplay();
-            const key = getStoredKey(); if(key) document.getElementById('api-key-input').value = key;
-            const bg = document.getElementById('bg-container'); 
-            images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i===0?' active':''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(div); });
-            setInterval(() => { 
-                let active = document.querySelector('.bg-slide.active');
-                if(!active) return;
-                let next = active.nextElementSibling || document.querySelectorAll('.bg-slide')[0];
-                active.classList.remove('active'); next.classList.add('active');
-            }, 6000);
-        };
     </script>
 </body>
 </html>
