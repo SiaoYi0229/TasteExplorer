@@ -316,7 +316,8 @@
             const loader = document.getElementById('loader');
             const btn = document.getElementById('search-btn');
             if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
-            btn.disabled = true; loader.style.display = 'flex';
+            btn.disabled = true; 
+            loader.style.display = 'flex';
 
             try {
                 const config = {
@@ -334,22 +335,29 @@
                 };
 
                 const res = await getAiRecommendation(config);
-                if(res.error) { alert(res.error); } 
-                else if(res.data && res.data.length > 0) {
+                
+                if(res.error) { 
+                    alert(res.error); // 這裡會顯示更精確的錯誤訊息
+                } else if(res.data && res.data.length > 0) {
                     incrementUsage();
                     keptRestaurants = []; 
                     isFinalSurvivor = false;
                     renderCards(res.data); 
-                } else { alert("🔍 沒找到足夠店家。"); }
-            } catch(e) { alert("探索異常。"); } 
-            finally { loader.style.display = 'none'; btn.disabled = false; }
+                } else { 
+                    alert("🔍 搜尋不到足夠的店家，請更換類別或預算試試。"); 
+                }
+            } catch(e) { 
+                alert("系統解析異常：" + e.message); 
+            } finally { 
+                loader.style.display = 'none'; 
+                btn.disabled = false; 
+            }
         }
 
         async function getAiRecommendation(cfg) {
             // 【鐵律：2.5 Flash】
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            // 【鐵律：三層級空間判定】
             let spatialPrompt = "";
             if (isNearbyMode) {
                 spatialPrompt = `【鐵律：GPS 模式】必須搜尋以座標 (${userCoords.lat}, ${userCoords.lng}) 為中心「半徑 1 公里內」的店家。`;
@@ -365,18 +373,48 @@
                 3. 需求：類別「${cfg.food}」、用途「${cfg.purpose}」、預算「${cfg.budget}」。
                 4. ${cfg.isHidden ? "優先找 Google 評論不多但高分的隱藏版。" : "找當地最高評分的人氣名店。"}
                 5. ${cfg.isOpenOnly ? `即時核對：確認台灣時間 ${cfg.userTime} 該店營業中。` : ""}
-                6. 輸出：純 JSON 陣列，不含 Markdown。格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
+                6. 輸出：純 JSON 陣列，不含 Markdown，禁止出現 [1] 或 【1】 等引用標註。
+                JSON 格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
 
             try {
-                const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] }) });
+                const response = await fetch(url, { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] }) 
+                });
+                
                 const result = await response.json();
-                if (result.error) return { error: "⚠️ API 忙碌中，請稍候一分鐘。" };
-                let text = result.candidates[0].content.parts[0].text;
-                text = text.replace(/\[\d+\]/g, "").replace(/【\d+】/g, "").replace(/```json|```/g, "").trim();
-                return { data: JSON.parse(text.substring(text.indexOf('['), text.lastIndexOf(']') + 1)) };
-            } catch (e) { return { error: "解析失敗，請重新按鈕嘗試。" }; }
-        }
+                
+                if (result.error) {
+                    const msg = result.error.message;
+                    if (result.error.code === 429) return { error: "⚠️ 請求太快了！Google 規定每分鐘只能搜尋幾次，請稍等一分鐘。" };
+                    if (msg.includes("API key")) return { error: "🔑 API Key 無效，請檢查設定。" };
+                    return { error: "❌ API 錯誤：" + msg };
+                }
 
+                if (!result.candidates || result.candidates[0].finishReason === "SAFETY") {
+                    return { error: "🛡️ 搜尋內容被安全過濾器攔截，請嘗試更換搜尋關鍵字。" };
+                }
+
+                let text = result.candidates[0].content.parts[0].text;
+                
+                // --- 強效清洗邏輯：解決 JSON.parse 失敗的問題 ---
+                // 1. 移除 Markdown 標記
+                text = text.replace(/```json|```/g, "").trim();
+                // 2. 移除聯網搜尋產生的註腳符號 (例如 [1], [2], 【1】)
+                text = text.replace(/\[\d+\]/g, "").replace(/【\d+】/g, "");
+                
+                const start = text.indexOf('[');
+                const end = text.lastIndexOf(']');
+                if (start === -1 || end === -1) throw new Error("AI 回傳的資料格式無法解析。");
+                
+                const cleanedJson = text.substring(start, end + 1);
+                return { data: JSON.parse(cleanedJson) };
+
+            } catch (e) { 
+                return { error: "⚠️ 解析失敗：建議再點擊一次搜尋按鈕。" }; 
+            }
+        }
         // --- 5. 卡片晉級與蓋章生存系統 ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
