@@ -377,10 +377,16 @@ async function startSearch() {
             alert("🔍 未能搜尋到符合條件的店家，請嘗試放寬條件（例如取消隱藏版或營業中限制）。"); 
             ui.classList.remove('blur-mode');
         }
-    } catch(e) { 
-        console.error("執行異常:", e);
-        alert("載入失敗，原因：" + e.message); 
-        ui.classList.remove('blur-mode');
+    /* --- 修改 startSearch 的 catch 區塊來精確除錯 --- */
+} catch(e) { 
+    console.error("執行異常:", e);
+    // 這裡會顯示具體的錯誤訊息，例如：
+    // "NetworkError when attempting to fetch resource" (網路問題)
+    // "Unexpected token < in JSON" (AI 回傳了 HTML 而不是 JSON)
+    // "Geolocation permission denied" (定位被拒絕)
+    alert("❌ 載入失敗\n具體原因：" + e.message); 
+    ui.classList.remove('blur-mode');
+}
     } finally { 
         loader.style.display = 'none'; 
         btn.disabled = false; 
