@@ -467,32 +467,44 @@ JSON 格式範例：
         return { error: e.message };
     }
 }
-        /* --- 4. 淘汰賽制卡片系統 (第一輪選中的進入下一輪，最後一張右滑蓋章) --- */
-        let activePool = [];   // 當前這一輪要顯示的店家
-        let likedPool = [];    // 使用者右滑（保留）的店家
+        /* --- 4. 淘汰賽制卡片系統 (修正版：確保變數與邏輯完整) --- */
+        
+        // 確保這兩個變數定義在函數外面
+        let activePool = [];   
+        let likedPool = [];    
 
         function renderCards(restaurants) {
-            document.getElementById('main-ui').classList.add('blur-mode');
-            document.getElementById('swiper-overlay').style.display = 'flex';
-            
-            activePool = [...restaurants]; // 初始名單
-            likedPool = [];                // 清空喜歡池
-            
-            buildStack(); 
+            console.log("進入渲染流程，接收到店家數:", restaurants.length);
+            try {
+                document.getElementById('main-ui').classList.add('blur-mode');
+                document.getElementById('swiper-overlay').style.display = 'flex';
+                
+                activePool = [...restaurants]; 
+                likedPool = [];                
+                
+                buildStack(); 
+            } catch (err) {
+                console.error("renderCards 發生錯誤:", err);
+                alert("渲染卡片時出錯: " + err.message);
+            }
         }
 
         function buildStack() {
             const stack = document.getElementById('card-stack'); 
+            if (!stack) return;
             stack.innerHTML = ''; 
             
-            // 判斷是否已經到最後決選（只剩一張）
+            // 判斷是否只剩一張
             const isFinalSurvivor = (activePool.length === 1);
 
             activePool.forEach((res, index) => {
-                const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
+                // 安全檢查：確保座標存在，避免 calculateDistance 崩潰
+                const distStr = (typeof calculateDistance === 'function') ? 
+                                calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng) : "---";
+
                 const wrapper = document.createElement('div'); 
                 wrapper.className = 'swipe-card-wrapper';
-                wrapper.style.zIndex = activePool.length - index; // 確保第一張在最上面
+                wrapper.style.zIndex = activePool.length - index; 
 
                 const card = document.createElement('div'); 
                 card.className = 'swipe-card';
@@ -534,20 +546,23 @@ JSON 格式範例：
             const nopeLabel = el.querySelector('.label-nope');
             const stamp = el.querySelector('.label-chosen');
 
+            // iPhone 優化：觸控開始
             el.addEventListener('touchstart', (e) => { 
                 startX = e.touches[0].clientX; 
                 el.style.transition = 'none'; 
             }, {passive: true});
 
+            // iPhone 優化：觸控移動
             el.addEventListener('touchmove', (e) => { 
                 moveX = e.touches[0].clientX - startX;
-                if(Math.abs(moveX) > 10) {
+                if(Math.abs(moveX) > 5) {
                     el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`;
-                    likeLabel.style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0;
-                    nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0;
+                    if(likeLabel) likeLabel.style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0;
+                    if(nopeLabel) nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0;
                 }
             }, {passive: true});
 
+            // 觸控結束
             el.addEventListener('touchend', () => { 
                 el.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'; 
                 
@@ -556,10 +571,10 @@ JSON 格式範例：
 
                     if (direction === 'right') {
                         if (isFinalSurvivor) {
-                            // 最後一張：蓋章
+                            // 最後決選：蓋章
                             el.style.transform = 'translateX(0) rotate(0deg)'; 
-                            likeLabel.style.opacity = 0; 
-                            stamp.classList.add('active');
+                            if(likeLabel) likeLabel.style.opacity = 0; 
+                            if(stamp) stamp.classList.add('active');
                         } else {
                             // 第一輪：保留並飛走
                             likedPool.push(restaurantData);
@@ -567,14 +582,14 @@ JSON 格式範例：
                             setTimeout(() => { wrapper.remove(); checkRoundStatus(); }, 300);
                         }
                     } else {
-                        // 左滑：淘汰
+                        // 左滑：直接移除
                         el.style.transform = `translateX(-150%) rotate(-30deg)`;
                         setTimeout(() => { wrapper.remove(); checkRoundStatus(); }, 300);
                     }
                 } else { 
                     el.style.transform = 'translateX(0) rotate(0deg)'; 
-                    likeLabel.style.opacity = 0; 
-                    nopeLabel.style.opacity = 0; 
+                    if(likeLabel) likeLabel.style.opacity = 0; 
+                    if(nopeLabel) nopeLabel.style.opacity = 0; 
                 }
                 moveX = 0;
             });
@@ -582,21 +597,19 @@ JSON 格式範例：
 
         function checkRoundStatus() {
             const remainingCards = document.querySelectorAll('.swipe-card-wrapper');
-            // 當畫面上這一輪的卡片都滑完時
+            // 當前畫面上所有卡片都處理完後
             if (remainingCards.length === 0) {
-                if (likedPool.length > 1) {
-                    // 進入下一輪決賽
+                if (likedPool.length > 0) {
+                    // 將選中的店家變成下一輪的名單
                     activePool = [...likedPool];
                     likedPool = [];
+                    // 如果剩下一張以上，提醒進入決選
+                    if (activePool.length > 1) {
+                        alert(`進入決選階段！請在剩下的 ${activePool.length} 家中選出你的最愛。`);
+                    }
                     buildStack(); 
-                } else if (likedPool.length === 1) {
-                    // 只剩一個，直接進入最後一張模式
-                    activePool = [...likedPool];
-                    likedPool = [];
-                    buildStack();
                 } else {
-                    // 通通不喜歡
-                    alert("😿 都不喜歡嗎？試著換個心情重新搜尋吧！");
+                    alert("😿 好像沒有合適的店家，請調整條件重新搜尋。");
                     resetUI();
                 }
             }
