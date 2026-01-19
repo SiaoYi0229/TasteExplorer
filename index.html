@@ -449,94 +449,72 @@ JSON 格式範例：
 }
 
 /* --- 3. 淘汰賽制卡片系統 --- */
-function renderCards(restaurants) {
-    document.getElementById('main-ui').classList.add('blur-mode');
-    document.getElementById('swiper-overlay').style.display = 'flex';
-    activePool = [...restaurants];
-    likedPool = [];
-    buildStack();
-}
+        let currentLikedList = []; let swipedCount = 0; let cardsRemaining = 0;
+        function renderCards(restaurants) {
+            document.getElementById('main-ui').classList.add('blur-mode');
+            const stack = document.getElementById('card-stack'); stack.innerHTML = '';
+            document.getElementById('swiper-overlay').style.display = 'flex';
+            currentLikedList = []; swipedCount = 0; cardsRemaining = restaurants.length;
+            restaurants.forEach((res) => {
+                const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
+                const wrapper = document.createElement('div'); wrapper.className = 'swipe-card-wrapper';
+                const card = document.createElement('div'); card.className = 'swipe-card';
+                card.innerHTML = `
+                    <div class="swipe-hints"><div class="hint-item">← NOPE</div><div class="hint-item">LIKE →</div></div>
+                    <div class="swipe-label label-like">LIKE</div><div class="swipe-label label-nope">NOPE</div>
+                    <div class="label-chosen">🏆 最終首選</div>
+                    <h3>${res.name}</h3>
+                    <div class="card-badges">
+                        <span class="card-badge badge-rating">⭐ ${res.rating}</span>
+                        <span class="card-badge badge-price">💰 ${res.price || '---'}</span>
+                        <span class="card-badge badge-distance">📍 ${distStr}</span>
+                    </div>
+                    <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
+                    <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
+                    <div class="card-summary">"${res.review_summary}"</div>
+                    <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 查看 Google 地圖</a>
+                `;
+                wrapper.appendChild(card); stack.appendChild(wrapper); initSwipe(card, wrapper, res, restaurants.length === 1);
+            });
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-swiper'; closeBtn.innerText = '都沒有喜歡的嗎？重新調整，再找一次吧！'; closeBtn.onclick = resetUI;
+            stack.appendChild(closeBtn); stack.scrollTo(0, 0); 
+        }
 
-function buildStack() {
-    const stack = document.getElementById('card-stack'); 
-    stack.innerHTML = ''; 
-    const isFinalSurvivor = (activePool.length === 1);
+        function initSwipe(el, wrapper, resData, isLastOne) {
+            let startX, moveX = 0; let isDone = false;
+            const likeLabel = el.querySelector('.label-like'); const nopeLabel = el.querySelector('.label-nope');
+            el.addEventListener('touchstart', (e) => { if (isDone || e.target.tagName === 'A') return; startX = e.touches[0].clientX; el.style.transition = 'none'; });
+            el.addEventListener('touchmove', (e) => { 
+                if (isDone || !startX) return; moveX = e.touches[0].clientX - startX; 
+                if(Math.abs(moveX) > 10) { 
+                    el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`; 
+                    likeLabel.style.opacity = moveX > 0 ? Math.min(moveX/100, 1) : 0;
+                    nopeLabel.style.opacity = moveX < 0 ? Math.min(Math.abs(moveX)/100, 1) : 0;
+                }
+            });
+            el.addEventListener('touchend', () => { 
+                if (isDone || !startX) return; el.style.transition = '0.4s ease'; 
+                if (Math.abs(moveX) > 100) { 
+                    const dir = moveX > 0 ? 1 : -1; 
+                    if (isLastOne && dir === -1) { el.style.transform = `translateX(-150%)`; setTimeout(() => resetUI(), 300); } 
+                    else if (dir === 1 && isLastOne) { 
+                        el.style.transform = 'translateX(0) rotate(0deg)'; 
+                        likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0;
+                        el.querySelector('.label-chosen').classList.add('active'); isDone = true; 
+                    } else { if (dir === 1) currentLikedList.push(resData); finishSwipe(el, wrapper, dir); }
+                } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; } startX = null; 
+            });
+        }
+        function finishSwipe(el, wrapper, dir) { el.style.transform = `translateX(${dir * 150}%)`; el.style.opacity = '0'; setTimeout(() => { wrapper.remove(); swipedCount++; if(swipedCount === cardsRemaining) { if(currentLikedList.length > 0) renderCards(currentLikedList); else resetUI(); } }, 300); }
+        function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
 
-    activePool.forEach((res, index) => {
-        const distStr = calculateDistance(userCoords.lat, userCoords.lng, res.lat, res.lng);
-        const wrapper = document.createElement('div'); 
-        wrapper.className = 'swipe-card-wrapper';
-        wrapper.style.zIndex = activePool.length - index;
-
-        const card = document.createElement('div'); 
-        card.className = 'swipe-card';
-        card.innerHTML = `
-            <div class="swipe-hints"><div class="hint-item">${isFinalSurvivor ? '← 拋棄' : '← 淘汰'}</div><div class="hint-item">${isFinalSurvivor ? '選這間 →' : '保留 →'}</div></div>
-            <div class="swipe-label label-like">${isFinalSurvivor ? 'OK' : 'KEEP'}</div><div class="swipe-label label-nope">NOPE</div>
-            <div class="label-chosen">🏆 最終首選</div>
-            <h3>${res.name}</h3>
-            <div class="card-badges"><span class="card-badge badge-rating">⭐ ${res.rating}</span><span class="card-badge badge-distance">📍 ${distStr}</span></div>
-            <div class="info-row"><span class="info-label">🕒 營業</span><span>${res.hours}</span></div>
-            <div class="card-summary">"${res.review_summary}"</div>
-            <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.name + ' ' + res.address)}" target="_blank">🗺️ 地圖</a>
-        `;
-        wrapper.appendChild(card); 
-        stack.appendChild(wrapper); 
-        initSwipe(card, wrapper, res, isFinalSurvivor);
-    });
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'close-swiper'; closeBtn.innerText = '← 返回修改'; closeBtn.onclick = resetUI;
-    stack.appendChild(closeBtn); 
-}
-
-function initSwipe(el, wrapper, restaurantData, isFinalSurvivor) {
-    let startX, moveX = 0;
-    const stamp = el.querySelector('.label-chosen');
-    el.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; el.style.transition = 'none'; }, {passive: true});
-    el.addEventListener('touchmove', (e) => { 
-        moveX = e.touches[0].clientX - startX;
-        if(Math.abs(moveX) > 5) el.style.transform = `translateX(${moveX}px) rotate(${moveX/20}deg)`;
-    }, {passive: true});
-    el.addEventListener('touchend', () => { 
-        el.style.transition = '0.4s ease'; 
-        if (Math.abs(moveX) > 100) { 
-            if (moveX > 0) {
-                if (isFinalSurvivor) { el.style.transform = 'none'; stamp.classList.add('active'); }
-                else { likedPool.push(restaurantData); el.style.transform = 'translateX(150%)'; setTimeout(() => { wrapper.remove(); checkRoundStatus(); }, 300); }
-            } else { el.style.transform = 'translateX(-150%)'; setTimeout(() => { wrapper.remove(); checkRoundStatus(); }, 300); }
-        } else { el.style.transform = 'none'; }
-        moveX = 0;
-    });
-}
-
-function checkRoundStatus() {
-    if (document.querySelectorAll('.swipe-card-wrapper').length === 0) {
-        if (likedPool.length > 0) { 
-            if (likedPool.length > 1) alert(`進入決選！從剩餘的 ${likedPool.length} 家中挑選`);
-            activePool = [...likedPool]; likedPool = []; buildStack(); 
-        } else { alert("都沒有喜歡的嗎？再找一次吧！"); resetUI(); }
-    }
-}
-
-function resetUI() { 
-    document.getElementById('swiper-overlay').style.display = 'none'; 
-    document.getElementById('main-ui').classList.remove('blur-mode'); 
-}
-
-/* --- 4. 啟動與背景 --- */
-window.onload = () => {
-    initLocationWatch(); updateDistricts(); updateUsageDisplay();
-    const key = getStoredKey(); if(key) document.getElementById('api-key-input').value = key;
-    const bg = document.getElementById('bg-container'); 
-    images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i===0?' active':''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(div); });
-    setInterval(() => { 
-        let slides = document.querySelectorAll('.bg-slide'); let active = document.querySelector('.bg-slide.active');
-        if(!active) return;
-        let next = active.nextElementSibling || slides[0];
-        active.classList.remove('active'); next.classList.add('active');
-    }, 6000);
-};
+        window.onload = () => {
+            initLocationWatch(); updateDistricts(); updateUsageDisplay();
+            const bg = document.getElementById('bg-container'); 
+            images.forEach((url, i) => { const div = document.createElement('div'); div.className = 'bg-slide' + (i===0?' active':''); div.style.backgroundImage = `url('${url}?auto=format&fit=crop&w=1200')`; bg.appendChild(div); });
+            let slideIdx = 0; setInterval(() => { const s = document.querySelectorAll('.bg-slide'); s[slideIdx].classList.remove('active'); slideIdx = (slideIdx+1)%s.length; s[slideIdx].classList.add('active'); }, 6000);
+        };
 
     </script>
 </body>
