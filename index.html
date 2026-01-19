@@ -315,27 +315,29 @@
             }
         }
 
-        // 新增一個等待函數
-const sleep = ms => new Promise(res => setTimeout(res, ms));
-
-async function getAiRecommendation(cfg, retryCount = 0) {
+       async function getAiRecommendation(cfg, retryCount = 0) {
     // 絕對保留 gemini-2.5-flash
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-    const prompt = `你是美食鑑定家。請利用 Google Search 在【${cfg.locationLimit}】尋找符合「${cfg.food}」、預算「${cfg.budget}」、適合「${cfg.purpose}」的 6 家真實店家。
+    // 優化搜尋語句，減少 AI 的負擔
+    const prompt = `你現在是連接 Google Maps 的美食導航員。
+    請執行以下任務：
+    1. 【搜尋】：使用 Google Search 僅進行「一次」全面搜尋，目標是：${cfg.locationLimit} 的「${cfg.food}」。
+    2. 【篩選】：從搜尋結果中挑選出符合預算「${cfg.budget}」且適合「${cfg.purpose}」的真實店家。
+    3. 【嚴格禁止杜撰】：如果搜尋結果不足 6 家，請只回傳真實找到的店家（即使只有 1-2 家）。嚴禁發明任何不存在的店名。
+    4. 【欄位格式】：
+       - name: 店名
+       - rating: 星等
+       - price: 價位 (💵)
+       - signature: 必點招牌
+       - review_summary: 簡短評論摘要
+       - reason: 推薦理由 (說明為何適合${cfg.purpose})
+       - map_query: 搜尋關鍵字 (店名 + 城市)
+
+    5. 【限制】：禁止地址、禁止座標、禁止註腳[1]、禁止 Markdown。
     
-    輸出格式為純 JSON 陣列，欄位：
-    - name: 店名
-    - rating: 星等
-    - price: 價位 (💵, 💵💵, 💵💵💵)
-    - signature: 必點招牌
-    - review_summary: 一句話評論摘要
-    - reason: 針對${cfg.purpose}的推薦理由
-    - map_query: 搜尋關鍵字 (店名+行政區)
-    
-    規則：禁止發明店家、禁止輸出註腳如[1]、禁止地址與座標。
-    ${cfg.isHidden ? "優先找隱藏版。" : "優先找名店。"}
-    ${cfg.isOpenOnly ? "僅限目前營業中。" : ""}`;
+    ${cfg.isHidden ? "優先挑選隱藏版美食。" : "挑選熱門名店。"}
+    ${cfg.isOpenOnly ? "僅限搜尋結果顯示『營業中』的店家。" : ""}`;
 
     try {
         const response = await fetch(url, { 
@@ -343,24 +345,22 @@ async function getAiRecommendation(cfg, retryCount = 0) {
             headers: { "Content-Type": "application/json" }, 
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: prompt }] }], 
-                tools: [{ google_search: {} }],
-                generationConfig: { response_mime_type: "application/json" }
+                tools: [{ google_search: {} }], // 關鍵聯網工具
+                generationConfig: { 
+                    response_mime_type: "application/json",
+                    temperature: 0.1 // 降低隨機性，防止 AI 亂編
+                }
             }) 
         });
 
-        // 處理頻率限制 (429)
+        // 處理 429 忙碌，自動重試
         if (response.status === 429 && retryCount < 2) {
-            console.log(`觸發頻率限制，5秒後進行第 ${retryCount + 1} 次重試...`);
-            await sleep(5000); 
+            await new Promise(res => setTimeout(res, 4000)); // 等 4 秒再試
             return getAiRecommendation(cfg, retryCount + 1);
         }
 
         const result = await response.json();
-        
-        if (result.error) {
-            if (result.error.code === 429) return { error: "⚠️ Google 搜尋忙碌中，請等 10 秒後再試一次。" };
-            return { error: "⚠️ 搜尋失敗，請檢查 API Key 或網路環境。" };
-        }
+        if (result.error) return { error: "Google 搜尋引擎繁忙，請稍候再點擊一次。" };
 
         let text = result.candidates[0].content.parts[0].text;
         
@@ -369,17 +369,19 @@ async function getAiRecommendation(cfg, retryCount = 0) {
         
         const start = text.indexOf('[');
         const end = text.lastIndexOf(']');
-        return { data: JSON.parse(text.substring(start, end + 1)) };
+        const data = JSON.parse(text.substring(start, end + 1));
+
+        return { data: data };
 
     } catch (e) { 
-        return { error: "解析資料發生錯誤，請重新嘗試。" }; 
+        return { error: "資料解析出錯，請再點一次搜尋。" }; 
     }
 }
         // --- 卡片生存系統 (100% 晉級制) ---
         function renderCards(restaurants) {
     document.getElementById('main-ui').classList.add('blur-mode');
     const stack = document.getElementById('card-stack'); 
-    stack.innerHTML = ''; // 清空舊的
+    stack.innerHTML = ''; 
     document.getElementById('swiper-overlay').style.display = 'flex';
     
     isFinalOne = (restaurants.length === 1);
@@ -390,7 +392,7 @@ async function getAiRecommendation(cfg, retryCount = 0) {
         const card = document.createElement('div'); 
         card.className = 'swipe-card';
         
-        // 這裡 100% 恢復你原始的 HTML 結構，確保 CSS 與 JS 抓得到這些 Element
+        // 100% 保留所有原始功能類別與 ID
         card.innerHTML = `
             <div class="swipe-hints">
                 <div class="hint-item">← NOPE</div>
@@ -405,36 +407,29 @@ async function getAiRecommendation(cfg, retryCount = 0) {
             <div class="card-badges">
                 <span class="card-badge badge-rating">⭐ ${res.rating}</span>
                 <span class="card-badge badge-price">${res.price}</span>
-                <span class="card-badge badge-distance" style="background:#6c5ce7">✨ 推薦</span>
+                <span class="card-badge badge-distance" style="background:#6c5ce7">實體店</span>
             </div>
             
-            <div class="info-row">
-                <span class="info-label">🔥 招牌</span>
-                <span>${res.signature}</span>
-            </div>
-            
+            <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
             <div class="card-summary">"${res.review_summary}"</div>
-            
             <div class="info-row" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                <span class="info-label">💡 原因</span>
-                <span style="color:var(--accent-yellow)">${res.reason}</span>
+                <span class="info-label">💡 原因</span><span style="color:var(--accent-yellow)">${res.reason}</span>
             </div>
             
+            <!-- 使用 map_query 保證在地圖上搜尋到正確的店 -->
             <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query)}" target="_blank">
-                🗺️ 打開地圖查看 (地址/營業時間)
+                🗺️ 打開地圖查看詳情
             </a>
         `;
         
         wrapper.appendChild(card); 
         stack.insertBefore(wrapper, stack.firstChild); 
-        
-        // 100% 繼承原本的滑動功能
-        initSwipe(card, wrapper, res);
+        initSwipe(card, wrapper, res); // 物理滑動保留
     });
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'close-swiper'; 
-    closeBtn.innerText = '← 返回修改條件'; 
+    closeBtn.innerText = '← 返回修改'; 
     closeBtn.onclick = resetUI;
     stack.appendChild(closeBtn); 
 }
