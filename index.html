@@ -326,23 +326,31 @@
             // 【鐵律：絕對使用 2.5 Flash】
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
             
-            let spatialPrompt = isNearbyMode ? `【鐵律：GPS 模式】搜尋座標 (${userCoords.lat}, ${userCoords.lng}) 中心半徑 1 公里內。` : 
-                               (cfg.transport !== 'none' && cfg.station ? `【鐵律：交通導向】搜尋「${cfg.city}${cfg.station}」步行 800 公尺內。` : `【鐵律：行政區模式】搜尋「${cfg.city}${cfg.district}」全區。`);
+            // 執行流程：精確空間判定
+            let spatialPrompt = "";
+            if (isNearbyMode) {
+                spatialPrompt = `以座標 (${userCoords.lat}, ${userCoords.lng}) 為中心「半徑 1 公里內」。`;
+            } else if (cfg.transport !== 'none' && cfg.station) {
+                spatialPrompt = `以「${cfg.city}${cfg.station}」為中心「步行 800 公尺內」。`;
+            } else {
+                spatialPrompt = `搜尋整個「${cfg.city}${cfg.district}」行政區全區。`;
+            }
 
-            // 強制 AI 執行「生成 -> 搜尋驗證 -> 填寫」的指令
-            const prompt = `你是美食專家。請嚴格執行以下驗證步驟：
-                步驟 1：根據「${cfg.food}」、「${cfg.purpose}」、「${cfg.budget}」初步選出符合 ${spatialPrompt} 的 6 家店家。
-                步驟 2：使用 Google Search 工具，逐一核對這 6 家店在 Google Maps 上的【真實評分】、【詳細地址】與【今日營業時間】。
-                步驟 3：使用 Google Search 查出該店精確的【經緯度座標】。
-                步驟 4：若該店已歇業或資訊有誤，請更換一家店並重複驗證，直到找滿 6 家「真實存在且營業中」的店家。
+            // 完全遵循「先生成 -> 再進 Google Search 確認 -> 再填寫正確資訊」的流程
+            const prompt = `你是專業美食專家。請嚴格遵守以下搜尋流程：
+                1. 任務：在 ${spatialPrompt} 找滿 6 家符合「${cfg.food}」、「${cfg.purpose}」、「${cfg.budget}」的店家。
+                2. 執行流程：
+                   - 先根據你的資料庫初步選出 6 家候選名單。
+                   - 【啟動 Google Search 工具】查核這 6 家店最新的：Google Maps 評分、詳細地址、營業狀態、經緯度座標。
+                   - 如果發現店家已歇業，請更換一家店並重複搜尋驗證。
+                   - 最終將查核後【真實正確的資訊】貼入下方的 JSON 欄位。
                 
-                ${cfg.isHidden ? "特色：優先找評分高但評論較少的隱藏版。" : "特色：找評分最高的人氣名店。"}
-                ${cfg.isOpenOnly ? `時效核對：現在台灣時間 ${cfg.userTime}，確保店家目前為營業狀態。` : ""}
+                ${cfg.isHidden ? "特色：優先尋找評論數較少但評分極高的隱藏版店家。" : "特色：找當地最高評分的人氣名店。"}
+                ${cfg.isOpenOnly ? `即時驗證：確認台灣時間 ${cfg.userTime} 必須是營業中。` : ""}
                 
                 輸出規範：
-                1. 禁止 Markdown (\`\`\`json)、禁止聯網註腳（如 [1]、[2]）。
-                2. 必須回傳純粹的 JSON 陣列。
-                3. 格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":數字,"lng":數字}]`;
+                - 只回傳純 JSON 陣列，嚴格禁止任何 Markdown 標記 (\`\`\`json) 或聯網引用註腳（如 [1]、[2]、【1】）。
+                - 格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":數字,"lng":數字}]`;
 
             try {
                 const response = await fetch(url, { 
@@ -355,34 +363,34 @@
                 });
                 
                 const result = await response.json();
-                
                 if (result.error) {
-                    if (result.error.code === 429) return { error: "⚠️ Google 忙碌中，請等一分鐘。" };
+                    if (result.error.code === 429) return { error: "⚠️ 請求太快，請等候一分鐘。" };
                     return { error: "❌ API 錯誤：" + result.error.message };
                 }
 
                 if (!result.candidates || !result.candidates[0].content) {
-                    return { error: "🛡️ 內容被安全攔截，請更換關鍵字。" };
+                    return { error: "🛡️ 搜尋內容觸發安全過濾，請試著換個字眼搜尋。" };
                 }
 
                 let text = result.candidates[0].content.parts[0].text;
                 
-                // --- 超強資料清洗（物理刪除註腳） ---
+                // --- 「核彈級」物理清洗邏輯（物理刪除註腳） ---
                 text = text.replace(/```json|```/g, "");
-                // 刪除所有 [1], [2], 【1】 以及 [ 1 ] 
-                text = text.replace(/\[\s*\d+\s*\]/g, "").replace(/【\s*\d+\s*】/g, "");
-                // 刪除 JSON Key 後面被誤加的註腳
-                text = text.replace(/"([^"]+)":/g, (match) => match.replace(/\[\d+\]/g, ""));
+                // 物理刪除所有形式的聯網註腳 [1], [2], 【1】, [ 1 ], [1, 2]
+                text = text.replace(/\[\s*\d+[\s,\d]*\s*\]/g, "");
+                text = text.replace(/【\s*\d+[\s,\d]*\s*】/g, "");
+                // 物理刪除欄位名稱後可能帶有的註腳
+                text = text.replace(/"([^"]+)":/g, (m) => m.replace(/\[\d+\]/g, ""));
                 
                 const startIdx = text.indexOf('[');
                 const endIdx = text.lastIndexOf(']');
+                if (startIdx === -1 || endIdx === -1) throw new Error("AI 產出的內容不包含 JSON。");
                 
-                if (startIdx === -1) throw new Error("無效 JSON");
-                
-                return { data: JSON.parse(text.substring(startIdx, endIdx + 1)) };
+                const finalJson = text.substring(startIdx, endIdx + 1).trim();
+                return { data: JSON.parse(finalJson) };
 
             } catch (e) { 
-                return { error: "⚠️ 解析失敗：這通常是因為 Google Search 傳回過多資料干擾。請再點擊一次搜尋。" }; 
+                return { error: "⚠️ 解析失敗。請再點擊一次按鈕。" }; 
             }
         }
 
