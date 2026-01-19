@@ -349,8 +349,23 @@
                 });
                 
                 const result = await response.json();
-                if (result.error) return { error: "API 請求頻率過高或密鑰錯誤。" };
 
+if (result.error) {
+    // 這裡會顯示 Google 原始的錯誤代碼與訊息
+    console.error("Google API Error:", result.error);
+    const errorCode = result.error.code;
+    const errorMsg = result.error.message;
+    
+    if (errorCode === 429) {
+        return { error: "⚠️ Google 聯網搜尋頻率太快，請稍等 30 秒再點一次。" };
+    } else if (errorCode === 400) {
+        return { error: `⚠️ 請求錯誤：${errorMsg} (請檢查版本號或指令格式)` };
+    } else if (errorCode === 403) {
+        return { error: "⚠️ API Key 權限不足或已停用。" };
+    } else {
+        return { error: `⚠️ 出現錯誤 (${errorCode}): ${errorMsg}` };
+    }
+}
                 let text = result.candidates[0].content.parts[0].text;
                 
                 // --- 強力去噪：消除所有 [1], [ 1 ], 【1】 ---
