@@ -351,7 +351,7 @@
         }
 
         async function getAiRecommendation(req) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${req.apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.apiKey}`;
             let spatialDesc = isNearbyMode ? `座標 (${req.lat}, ${req.lng}) 附近 1 公里` : `${req.city}${req.district}${req.station?'鄰近'+req.station+'站':''}`;
             const prompt = `你是美食搜尋導遊。搜尋「台灣」真實店家：1. 範圍：${spatialDesc}。2. 需求：類別「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」。3. ${req.hidden ? "優先推薦評論少但評分 4.3 以上的隱藏版。" : "推薦評分最高的人氣店。"} 4. ${req.openOnly ? `確認 ${req.userTime} 是「營業中」。` : ""} 5. 純 JSON 陣列輸出，不含 Markdown。格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
             try {
