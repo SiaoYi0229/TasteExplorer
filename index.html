@@ -87,11 +87,13 @@
 
         .footer-action { width: 100%; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
         .cta-button { width: 100%; background: linear-gradient(180deg, #FF8533, #FF6600); border: none; padding: 16px; font-weight: 700; border-radius: 16px; color: #fff; cursor: pointer; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4); transition: 0.3s; }
+        /* 修正：搜尋按鈕顏色保持橘色 */
         .cta-button:disabled { background: linear-gradient(180deg, #FF8533, #FF6600); opacity: 0.95; cursor: not-allowed; box-shadow: none; }
         
         .usage-hint { font-size: 0.85rem; opacity: 0.7; color: #ffffff; font-weight: 500; flex: 0 0 auto; }
 
         #swiper-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: none; flex-direction: column; align-items: center; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
+        /* 修正：移除垂直拉霸 */
         .card-stack { width: 100%; max-width: 340px; height: 100%; display: flex; flex-direction: column; align-items: center; overflow: hidden; padding: 20px 0 120px 0; gap: 20px; }
         .swipe-card-wrapper { width: 92%; flex-shrink: 0; transition: transform 0.4s ease, opacity 0.4s ease; position: relative; }
         .swipe-card { width: 100%; background: var(--glass-bg); border-radius: 24px; border: 1px solid var(--glass-border); padding: 20px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
@@ -195,7 +197,7 @@
     </div>
 
     <script>
-        // --- 1. 核心數據 100% 還原 ---
+        /* --- 1. 核心數據 (100% 還原，含交通資料) --- */
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
@@ -212,7 +214,7 @@
         const airportMap = { 'Taipei': { '松山區': ['台北松山機場'] }, 'Taoyuan': { '大園區': ['桃園國際機場'] }, 'Taichung': { '沙鹿區': ['台中國際機場'] }, 'Kaohsiung': { '小港區': ['高雄小港機場'] }, 'Penghu': { '湖西鄉': ['澎湖機場'] }, 'Kinmen': { '金湖鎮': ['金門機場'] }, 'Lienchiang': { '南竿鄉': ['馬祖南竿機場'] } };
         const mrtMap = { 'Taipei': { '中正區': ['台北車站', '善導寺', '忠孝新生', '中正紀念堂', '古亭', '西門', '台大醫院'], '萬華區': ['西門', '龍山寺'], '大安區': ['忠孝復興', '忠孝敦化', '國父紀念館', '信義安和', '大安', '科技大樓', '六張犁', '公館', '東門'], '信義區': ['市政府', '永春', '後山埤', '象山', '台北101/世貿'], '中山區': ['中山', '雙連', '民權西路', '圓山', '松江南京', '行天宮', '中山國小', '大直', '劍南路'], '松山區': ['南京復興', '台北小巨蛋', '南京三三民', '松山'], '大同區': ['大橋頭', '中山', '圓山', '民權西路'], '士林區': ['劍潭', '士林', '芝山', '明德'], '北投區': ['石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡', '竹圍', '紅樹林', '淡水'], '內湖區': ['西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖'], '南港區': ['南港', '南港展覽館', '南港軟體園區', '昆陽'], '文山區': ['動物園', '木柵', '萬芳醫院', '萬芳社區', '景美', '萬隆'] }, 'NewTaipei': { '板橋區': ['板橋', '府中', '新埔', '江子翠', '亞東醫院'], '三重區': ['三重', '菜寮', '台北橋', '三重國小', '三和國中', '徐匯中學'], '中和區': ['景安', '南勢角', '永安市場', '中和'], '永和區': ['頂溪', '永安市場'], '新莊區': ['新莊', '輔大', '丹鳳', '迴龍', '頭前庄'], '新店區': ['新店', '七張', '大坪林', '小碧潭', '新店區公所'], '淡水區': ['淡水', '紅樹林', '竹圍'], '林口區': ['林口'] } };
 
-        // --- 2. 工具函數與座標同步 ---
+        // --- 2. 核心 UI 與座標邏輯 ---
         function calculateDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "未知";
             const R = 6371;
@@ -289,12 +291,12 @@
         function getUsageCount() { const key = getStoredKey(); if (!key) return 0; const keyId = "KEY_" + key.slice(-10); return parseInt(localStorage.getItem('COUNT_' + keyId) || '0'); }
         function updateUsageDisplay() { const count = getUsageCount(); document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`; const btn = document.getElementById('search-btn'); if (count >= DAILY_LIMIT) { btn.disabled = true; btn.innerText = "今日次數已滿"; } else { btn.disabled = false; btn.innerText = "開始探索美食"; } }
 
-        // --- 3. 搜尋核心與檢查報錯 (您說的「目前沒有機場那一段」就在這) ---
+        // --- 3. 搜尋邏輯 (含機場/捷運可用性檢查) ---
         async function handleSearchClick() {
             if (!getStoredKey()) { document.getElementById('api-overlay').style.display = 'flex'; return; }
             if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日次數已滿。"); return; }
             
-            // --- 交通可用性檢查報錯區 (補回) ---
+            // --- 此部分即為您要求的「沒有機場」大檢查邏輯 ---
             if (!isNearbyMode) {
                 const cityKey = document.getElementById('city').value;
                 const cityName = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
@@ -314,9 +316,7 @@
             const btn = document.getElementById('search-btn');
             const ui = document.getElementById('main-ui');
             if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
-            
-            btn.disabled = true; 
-            loader.style.display = 'flex';
+            btn.disabled = true; loader.style.display = 'flex';
 
             try {
                 const now = new Date();
@@ -363,54 +363,55 @@
             
             let locDesc = "";
             if (isNearbyMode) {
-                // GPS 推敲邏輯強化
-                locDesc = `座標 (${req.lat}, ${req.lng})。請先聯網識別該處所在的「行政區」與「主要路名」，並搜尋周邊 500 公尺內的著名地標或大眾運輸目標作為參考，以此為中心搜尋 1 公里內美食。`;
+                // GPS 座標推敲邏輯
+                locDesc = `座標 (${req.lat}, ${req.lng})。請先聯網識別該座標所在的行政區與路名，並識別 500 公尺內的知名交通標的或地標（如捷運出口、知名大樓），以此為核心搜尋 1 公里內美食。`;
             } else {
-                let stationInfo = (req.mrtStation && req.transportType !== 'none') ? `，且必須鄰近「${req.mrtStation}${req.transportType === 'airport' ? '' : '站'}」步行可達距離` : "";
+                let stationInfo = (req.mrtStation && req.transportType !== 'none') ? `，且必須鄰近「${req.mrtStation}${req.transportType === 'airport' ? '' : '站'}」步行可達範圍` : "";
                 locDesc = `${req.city}${req.district}${stationInfo}`;
             }
 
-            const prompt = `你是美食專家。任務：在「${locDesc}」探索符合條件的店家。
-                篩選：類別「${req.food}」、目的「${req.purpose}」、預算「${req.budget}」。
+            const prompt = `你是美食專家。地點任務：在「${locDesc}」探索。
+                篩選：類別「${req.food}」、用途「${req.purpose}」、預算「${req.budget}」。
                 要求：
-                1. ${req.hidden ? "尋找評論數較少但評分極高的隱藏版店家。" : "搜尋當地真實且高品質的店家。"}
-                2. 立刻聯網核對真實地址、lat, lng 座標、評分，確認在台灣時間 (${req.userTime})${req.openOnly ? " 必須營業中" : ""}。
-                3. 禁止出現已歇業的店。輸出回傳 JSON 陣列，不加 Markdown 標記。
+                1. ${req.hidden ? "尋找評論數較少但評分極高的隱藏版店家。" : "搜尋真實存在的優質店家。"}
+                2. 立刻聯網核對真實地址、座標 (lat, lng 必須是數字)、評分，確認在台灣時間 (${req.userTime})${req.openOnly ? " 必須營業中" : ""}。
+                3. 如果店家歇業請更換。回傳 JSON 陣列。禁止 Markdown 文字。
 
-                結構：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"推薦菜","review_summary":"一句短評","address":"地址","lat":緯度,"lng":經度}]`;
+                結構：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"推薦菜","review_summary":"短評","address":"地址","lat":緯度,"lng":經度}]`;
 
-            const requestBody = { 
-                contents: [{ parts: [{ text: prompt }] }], 
-                tools: [{ google_search: {} }] 
-            };
+            const requestBody = { contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] };
 
             try {
                 const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(requestBody) });
                 const result = await response.json();
                 
-                // --- 繁體中文錯誤翻譯攔截 ---
+                // --- 繁體中文錯誤翻譯 ---
                 if (result.error) {
                     let rawMsg = result.error.message;
                     let translatedMsg = "⚠️ 探索失敗：";
                     if (rawMsg.includes("quota") || rawMsg.includes("limit")) translatedMsg += "您的 API 使用次數已達上限。";
                     else if (rawMsg.includes("API key")) translatedMsg += "API Key 無效或輸入錯誤。";
-                    else if (rawMsg.includes("safety") || rawMsg.includes("blocked")) translatedMsg += "因安全過濾無法顯示，請更改關鍵字。";
-                    else if (rawMsg.includes("overloaded") || rawMsg.includes("503")) translatedMsg += "伺服器忙碌，請 10 秒後再試。";
-                    else translatedMsg += "發生未知的系統錯誤 (" + rawMsg + ")";
+                    else if (rawMsg.includes("safety")) translatedMsg += "內容安全攔截。";
+                    else translatedMsg += "系統異常 (" + rawMsg + ")";
                     throw new Error(translatedMsg);
                 }
 
                 if (!result.candidates || !result.candidates[0].content) throw new Error("無效的回傳結構");
                 let text = result.candidates[0].content.parts[0].text;
+                
+                // 清洗 JSON
                 text = text.replace(/\[\d+(,\s*\d+)*\]/g, "").replace(/【\d+】/g, "").replace(/```json/g, "").replace(/```/g, "").trim();
+                
                 const startIdx = text.indexOf('['); const endIdx = text.lastIndexOf(']');
+                if (startIdx === -1 || endIdx === -1) throw new Error("JSON 解析錯誤");
+                
                 return { data: JSON.parse(text.substring(startIdx, endIdx + 1)) };
             } catch (e) {
                 return { error: e.message };
             }
         }
         
-        // --- 4. 渲染與卡片系統 (徹底移除拉霸、右滑印章邏輯) ---
+        // --- 4. 渲染與卡片系統 (移除拉霸、最後一張右滑蓋章) ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
             const stack = document.getElementById('card-stack'); 
@@ -463,7 +464,7 @@
                 el.style.transition = '0.4s ease'; 
                 if (Math.abs(moveX) > 100) { 
                     const dir = moveX > 0 ? 1 : -1;
-                    // 修正邏輯：卡片系統往右滑進到下一輪 直到最後一張往右滑在蓋印章
+                    // 邏輯：最後一張右滑蓋印章
                     if (isLastOne && dir === 1) { 
                         el.style.transform = 'translateX(0) rotate(0deg)'; 
                         likeLabel.style.opacity = 0; stamp.classList.add('active'); 
@@ -474,6 +475,7 @@
                 } else { el.style.transform = 'translateX(0) rotate(0deg)'; likeLabel.style.opacity = 0; nopeLabel.style.opacity = 0; }
             });
         }
+
         function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
 
         window.onload = () => {
