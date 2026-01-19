@@ -315,71 +315,66 @@
             }
         }
 
-        async function getAiRecommendation(cfg) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
+        // 新增一個等待函數
+const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-            const prompt = `你是專業美食評鑑官。請嚴格執行：
-                1. 搜尋任務：請利用 Google Search 在【${cfg.locationRequirement}】尋找符合「${cfg.food}」類別、預算「${cfg.budget}」、適合「${cfg.purpose}」的 6 家真實存在的店家。
-                2. 真實性檢查：禁止發明店家。每家店必須是 Google 地圖上真實可查、且評價與你的描述相符。
-                3. JSON 欄位要求：
-                   - name: 店名
-                   - rating: 星等 (例如 4.2)
-                   - price: 價位等級 (僅限使用 💵, 💵💵, 💵💵💵)
-                   - signature: 必點招牌菜 (1-2道)
-                   - review_summary: 簡短的評論摘要 (大眾對這家店的整體印象)
-                   - reason: 針對「${cfg.purpose}」這個目的推薦的原因 (為什麼適合？)
-                   - map_query: 搜尋關鍵字 (店名 + 所在縣市)
-                4. 禁止事項：
-                   - 禁止回傳任何地址、座標、電話、營業時間。
-                   - 禁止在 JSON 中包含任何註腳（如 [1], [2]）或來源網址。
-                   - 輸出格式必須是純 JSON 陣列，不含 Markdown。
-                
-                ${cfg.isHidden ? "優先挑選高分但評論數較少的隱藏版美食。" : "優先挑選熱門名店。"}
-                ${cfg.isOpenOnly ? "請確認該店家在目前台灣時間是否標示為營業中。" : ""}`;
+async function getAiRecommendation(cfg, retryCount = 0) {
+    // 絕對保留 gemini-2.5-flash
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            try {
-                const response = await fetch(url, { 
-                    method: "POST", 
-                    headers: { "Content-Type": "application/json" }, 
-                    body: JSON.stringify({ 
-                        contents: [{ parts: [{ text: prompt }] }], 
-                        tools: [{ google_search: {} }],
-                        generationConfig: { response_mime_type: "application/json" }
-                    }) 
-                });
-                
-                const result = await response.json();
-
-if (result.error) {
-    // 這裡會顯示 Google 原始的錯誤代碼與訊息
-    console.error("Google API Error:", result.error);
-    const errorCode = result.error.code;
-    const errorMsg = result.error.message;
+    const prompt = `你是美食鑑定家。請利用 Google Search 在【${cfg.locationLimit}】尋找符合「${cfg.food}」、預算「${cfg.budget}」、適合「${cfg.purpose}」的 6 家真實店家。
     
-    if (errorCode === 429) {
-        return { error: "⚠️ Google 聯網搜尋頻率太快，請稍等 30 秒再點一次。" };
-    } else if (errorCode === 400) {
-        return { error: `⚠️ 請求錯誤：${errorMsg} (請檢查版本號或指令格式)` };
-    } else if (errorCode === 403) {
-        return { error: "⚠️ API Key 權限不足或已停用。" };
-    } else {
-        return { error: `⚠️ 出現錯誤 (${errorCode}): ${errorMsg}` };
+    輸出格式為純 JSON 陣列，欄位：
+    - name: 店名
+    - rating: 星等
+    - price: 價位 (💵, 💵💵, 💵💵💵)
+    - signature: 必點招牌
+    - review_summary: 一句話評論摘要
+    - reason: 針對${cfg.purpose}的推薦理由
+    - map_query: 搜尋關鍵字 (店名+行政區)
+    
+    規則：禁止發明店家、禁止輸出註腳如[1]、禁止地址與座標。
+    ${cfg.isHidden ? "優先找隱藏版。" : "優先找名店。"}
+    ${cfg.isOpenOnly ? "僅限目前營業中。" : ""}`;
+
+    try {
+        const response = await fetch(url, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify({ 
+                contents: [{ parts: [{ text: prompt }] }], 
+                tools: [{ google_search: {} }],
+                generationConfig: { response_mime_type: "application/json" }
+            }) 
+        });
+
+        // 處理頻率限制 (429)
+        if (response.status === 429 && retryCount < 2) {
+            console.log(`觸發頻率限制，5秒後進行第 ${retryCount + 1} 次重試...`);
+            await sleep(5000); 
+            return getAiRecommendation(cfg, retryCount + 1);
+        }
+
+        const result = await response.json();
+        
+        if (result.error) {
+            if (result.error.code === 429) return { error: "⚠️ Google 搜尋忙碌中，請等 10 秒後再試一次。" };
+            return { error: "⚠️ 搜尋失敗，請檢查 API Key 或網路環境。" };
+        }
+
+        let text = result.candidates[0].content.parts[0].text;
+        
+        // 物理去噪：徹底消除註腳
+        text = text.replace(/\[\s*\d+[\s,\d]*\s*\]/g, "").replace(/【\s*\d+[\s,\d]*\s*】/g, "");
+        
+        const start = text.indexOf('[');
+        const end = text.lastIndexOf(']');
+        return { data: JSON.parse(text.substring(start, end + 1)) };
+
+    } catch (e) { 
+        return { error: "解析資料發生錯誤，請重新嘗試。" }; 
     }
 }
-                let text = result.candidates[0].content.parts[0].text;
-                
-                // --- 強力去噪：消除所有 [1], [ 1 ], 【1】 ---
-                text = text.replace(/\[\s*\d+[\s,\d]*\s*\]/g, "");
-                text = text.replace(/【\s*\d+[\s,\d]*\s*】/g, "");
-                
-                const start = text.indexOf('[');
-                const end = text.lastIndexOf(']');
-                return { data: JSON.parse(text.substring(start, end + 1)) };
-
-            } catch (e) { 
-                return { error: "解析資料失敗，請重試一次。" }; 
-            }
-        }
         // --- 卡片生存系統 (100% 晉級制) ---
         function renderCards(restaurants) {
     document.getElementById('main-ui').classList.add('blur-mode');
