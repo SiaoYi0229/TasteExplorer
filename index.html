@@ -313,123 +313,161 @@
 
         /* --- 只更動 script 內的邏輯，其餘前端結構 100% 保留 --- */
 
+/* --- 1. 搜尋發動邏輯：判定三種模式並準備環境數據 --- */
 async function startSearch() {
-const loader = document.getElementById('loader');
-const btn = document.getElementById('search-btn');
-const ui = document.getElementById('main-ui');
-if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
-btn.disabled = true; loader.style.display = 'flex';
+    const loader = document.getElementById('loader');
+    const btn = document.getElementById('search-btn');
+    const ui = document.getElementById('main-ui');
+    
+    // 定位檢查
+    if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { 
+        alert("尚未取得定位！"); 
+        return; 
+    }
+    
+    btn.disabled = true; 
+    loader.style.display = 'flex';
 
+    try {
+        const now = new Date();
+        const city = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
+        const district = document.getElementById('district').value;
+        const transport = document.getElementById('transport').value;
+        const station = document.getElementById('mrt-station').value;
+        
+        // --- 核心模式判定邏輯 ---
+        let locationContext = "";
+        if (isNearbyMode) {
+            // 模式 1: GPS 模式 (1km)
+            locationContext = `以中心座標 (${userCoords.lat}, ${userCoords.lng}) 為基準點的「方圓 1 公里範圍內」`;
+        } else if (transport !== 'none' && station) {
+            // 模式 2: 交通站點模式 (800m)
+            const transText = document.getElementById('transport').options[document.getElementById('transport').selectedIndex].text;
+            locationContext = `位於 ${city}${district}，且在「${station}」站出口「方圓 800 公尺」步行距離內`;
+        } else {
+            // 模式 3: 純行政區模式 (不限公里數)
+            locationContext = `整個 ${city}${district} 行政區境內（不限公里數與距離，只要在該行政區範圍內即可）`;
+        }
 
-try {
-    const now = new Date();
-    const data = {
-        apiKey: getStoredKey(),
-        city: isNearbyMode ? "" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-        district: isNearbyMode ? "" : document.getElementById('district').value,
-        food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
-        purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
-        budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
-        mrtStation: isNearbyMode ? "" : (document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : ""),
-        userTime: `${now.getHours()}:${now.getMinutes()}`,
-        lat: userCoords.lat, lng: userCoords.lng,
-        hidden: document.getElementById('btn-hidden').classList.contains('selected'),
-        openOnly: document.getElementById('btn-open').classList.contains('selected')
+        const data = {
+            apiKey: getStoredKey(),
+            locationContext: locationContext,
+            food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
+            purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
+            budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
+            userTime: `${now.getHours()}:${now.getMinutes()}`,
+            hidden: document.getElementById('btn-hidden').classList.contains('selected'),
+            openOnly: document.getElementById('btn-open').classList.contains('selected')
+        };
+
+        const res = await getAiRecommendation(data);
+        
+        if(res.error) { 
+            alert(res.error); 
+            ui.classList.remove('blur-mode');
+        } else if(res.data && res.data.length > 0) {
+            const keyId = "KEY_" + data.apiKey.slice(-10);
+            localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
+            updateUsageDisplay();
+            renderCards(res.data);
+        } else { 
+            alert("🔍 未能搜尋到符合條件的店家，建議放寬條件再試一次。"); 
+            ui.classList.remove('blur-mode');
+        }
+    } catch(e) { 
+        alert("搜尋異常：" + e.message); 
+        ui.classList.remove('blur-mode');
+    } finally { 
+        loader.style.display = 'none'; 
+        btn.disabled = false; 
+    }
+}
+
+/* --- 2. AI 請求邏輯：Gemini 2.5 Flash 鐵律與完整錯誤翻譯 --- */
+async function getAiRecommendation(req) {
+    // 鐵律：使用 2.5-flash
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.apiKey}`;
+
+    const prompt = `你是台灣在地美食搜尋專家。請利用 Google Search 嚴格篩選出 5 間符合以下條件的真實店家：
+
+1. **地理位置規範 (鐵律)**：
+   - 搜尋範圍：${req.locationContext}。
+   - 如果有距離限制，請務必核對店址與基準點的實際距離。
+   - 如果是行政區模式，請搜尋該區最值得推薦的店，不限距離。
+
+2. **篩選條件**：
+   - 食物種類：${req.food}
+   - 用途目的：${req.purpose}
+   - 預算範圍：${req.budget}
+   - ${req.hidden ? "優先挑選：Google 評論數較少但評分極高的「隱藏版」店鋪。" : ""}
+   - 營業狀態：現在時間是 ${req.userTime}，${req.openOnly ? "推薦的店家「目前必須正在營業中」。" : "請詳細列出今日營業時間。"}
+
+3. **輸出規範**：
+   - 必須提供真實有效的 lat, lng 數字。
+   - 回傳格式必須僅為一個 JSON 陣列。
+   - 禁止 Markdown 標記 (\`\`\`json) 與搜尋註腳 (如 [1], [2])。
+
+JSON 結構格式：
+[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"一句話短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
+
+    const requestBody = { 
+        contents: [{ parts: [{ text: prompt }] }], 
+        tools: [{ google_search: {} }] 
     };
 
-    const res = await getAiRecommendation(data);
-    
-    if(res.error) { 
-        // 這裡會顯示中文化後的錯誤訊息
-        alert(res.error); 
-        ui.classList.remove('blur-mode');
-    } else if(res.data && res.data.length > 0) {
-        const keyId = "KEY_" + data.apiKey.slice(-10);
-        localStorage.setItem('COUNT_' + keyId, (getUsageCount() + 1).toString());
-        updateUsageDisplay();
-        renderCards(res.data);
-    } else { 
-        alert("🔍 未能搜尋到符合條件的店家，建議放寬條件再試一次。"); 
-        ui.classList.remove('blur-mode');
-    }
-} catch(e) { 
-    alert("搜尋異常，請稍後再試。"); 
-    ui.classList.remove('blur-mode');
-} finally { 
-    loader.style.display = 'none'; 
-    btn.disabled = false; 
-}
-
-}
-
-async function getAiRecommendation(req) {
-const url = https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${req.apiKey};
-let loc = isNearbyMode ? 座標 (${req.lat}, ${req.lng}) 附近 1公里內 : ${req.city}${req.district}${req.mrtStation?'鄰近'+req.mrtStation+'站':''};
-code
-Code
-
-const prompt = `你是專業美食搜尋助手。任務：
-    1. 找出 5 間在「${loc}」符合「${req.food}」類別、用途「${req.purpose}」、預算「${req.budget}」的真實店家。
-    2. ${req.hidden ? "優先尋找評論數較少但評分極高的隱藏版店家。" : ""}
-    3. 使用 Google Search 聯網核對真實地址、經緯度、評分，並確認在台灣時間 (${req.userTime})${req.openOnly ? " 必須是營業中" : ""}。
-    4. 如果店家已歇業，請務必更換。
-
-    輸出規範：
-    - 只回傳一個 JSON 陣列。
-    - 禁止 Markdown 標記 (\`\`\`json) 或搜尋引用的中括號 (如 [1])。
-    - 必須包含正確的 lat, lng 數字欄位。
-
-    JSON 結構格式：
-    [{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"一句話短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
-
-const requestBody = { 
-    contents: [{ parts: [{ text: prompt }] }], 
-    tools: [{ google_search: {} }] 
-};
-
-try {
-    const response = await fetch(url, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify(requestBody) 
-    });
-    const result = await response.json();
-    
-    // --- 錯誤攔截與翻譯邏輯 ---
-    if (result.error) {
-        let rawMsg = result.error.message;
-        let translatedMsg = "⚠️ 探索失敗：";
-
-        if (rawMsg.includes("quota") || rawMsg.includes("limit")) {
-            translatedMsg += "您的 API 使用次數已達上限。 (免費版通常限制為每分鐘 2 次或每日 50 次)，請稍後再試。";
-        } else if (rawMsg.includes("API key")) {
-            translatedMsg += "API Key 無效或輸入錯誤，請重新設定。";
-        } else if (rawMsg.includes("expired")) {
-            translatedMsg += "API Key 已過期，請更換新的 Key。";
-        } else if (rawMsg.includes("safety") || rawMsg.includes("blocked")) {
-            translatedMsg += "因內容安全過濾，無法顯示結果，請嘗試更換搜尋關鍵字。";
-        } else if (rawMsg.includes("overloaded") || rawMsg.includes("503")) {
-            translatedMsg += "Google 伺服器目前忙碌中，請稍等 10 秒後再試一次。";
-        } else {
-            translatedMsg += "發生未知的系統錯誤 (" + rawMsg + ")";
-        }
-        throw new Error(translatedMsg);
-    }
-
-    if (!result.candidates || !result.candidates[0].content) throw new Error("無效的回傳結構，請再試一次。");
-    
-    let text = result.candidates[0].content.parts[0].text;
-    text = text.replace(/\[\d+(,\s*\d+)*\]/g, "").replace(/【\d+】/g, "").replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    const startIdx = text.indexOf('['); 
-    const endIdx = text.lastIndexOf(']');
-    if (startIdx === -1 || endIdx === -1) throw new Error("JSON 格式解析錯誤");
-    
-    return { data: JSON.parse(text.substring(startIdx, endIdx + 1)) };
-} catch (e) {
-    return { error: e.message }; // 這裡會傳回翻譯後的中文訊息
-}
+    try {
+        const response = await fetch(url, { 
+            method: "POST", 
+            headers: { "Content-Type": "application/json" }, 
+            body: JSON.stringify(requestBody) 
+        });
+        const result = await response.json();
         
+        // --- 完整錯誤翻譯與攔截系統 ---
+        if (result.error) {
+            let rawMsg = result.error.message || "";
+            let rawStatus = result.error.status || "";
+            let translatedMsg = "⚠️ 探索失敗：";
+
+            if (rawMsg.includes("quota") || rawMsg.includes("limit") || rawMsg.includes("429")) {
+                translatedMsg += "您的 API 使用次數已達上限 (每分鐘 2 次)，請稍候再試。";
+            } else if (rawMsg.includes("API key") || rawStatus === "UNAUTHENTICATED") {
+                translatedMsg += "API Key 無效，請檢查設定。";
+            } else if (rawMsg.includes("not enabled") || rawMsg.includes("permission")) {
+                translatedMsg += "此 Key 尚未啟用 Gemini 服務權限。";
+            } else if (rawMsg.includes("safety") || rawMsg.includes("blocked")) {
+                translatedMsg += "因內容安全過濾，AI 拒絕了此次搜尋。";
+            } else if (rawMsg.includes("overloaded") || rawMsg.includes("503") || rawMsg.includes("internal")) {
+                translatedMsg += "伺服器目前忙碌或過載，請稍等 10 秒後重試。";
+            } else {
+                translatedMsg += `系統錯誤 (${rawMsg})`;
+            }
+            throw new Error(translatedMsg);
+        }
+
+        // 檢查是否有候選內容 (處理 Safety Filter 攔截)
+        if (!result.candidates || result.candidates.length === 0 || !result.candidates[0].content) {
+            throw new Error("⚠️ AI 無法產生推薦，請嘗試更換關鍵字或放寬條件。");
+        }
+        
+        let text = result.candidates[0].content.parts[0].text;
+        
+        // 強力清理 2.5-flash 常見的 Markdown 標記與搜尋引用
+        text = text.replace(/\[\d+(,\s*\d+)*\]/g, "")
+                   .replace(/【\d+】/g, "")
+                   .replace(/```json/g, "")
+                   .replace(/```/g, "")
+                   .trim();
+        
+        const startIdx = text.indexOf('['); 
+        const endIdx = text.lastIndexOf(']');
+        if (startIdx === -1 || endIdx === -1) throw new Error("JSON 格式解析錯誤");
+        
+        return { data: JSON.parse(text.substring(startIdx, endIdx + 1)) };
+    } catch (e) {
+        return { error: e.message };
+    }
+}
         // --- 4. 渲染與卡片系統 (移除拉霸、最後一張右滑蓋章) ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
