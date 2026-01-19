@@ -291,7 +291,7 @@
             startSearch();
         }
 
-        async function startSearch() {
+       async function startSearch() {
             const loader = document.getElementById('loader');
             const btn = document.getElementById('search-btn');
             if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
@@ -299,10 +299,10 @@
             try {
                 const config = {
                     apiKey: getStoredKey(),
-                    city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-                    district: document.getElementById('district').value,
+                    city: isNearbyMode ? "" : document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                    district: isNearbyMode ? "" : document.getElementById('district').value,
                     transport: document.getElementById('transport').value,
-                    station: document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : "",
+                    station: isNearbyMode ? "" : (document.getElementById('mrt-station') ? document.getElementById('mrt-station').value : ""),
                     food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
                     purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
                     budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
@@ -311,38 +311,71 @@
                     userTime: new Date().toLocaleTimeString('zh-TW', {hour12: false, hour: '2-digit', minute:'2-digit'})
                 };
                 const res = await getAiRecommendation(config);
-                if(res.error) { alert(res.error); } 
-                else if(res.data && res.data.length > 0) {
+                if(res.error) { 
+                    alert(res.error); 
+                } else if(res.data && res.data.length > 0) {
                     incrementUsage();
                     keptRestaurants = []; isFinalSurvivor = false;
                     renderCards(res.data); 
                 } else { alert("🔍 沒找到足夠店家。"); }
-            } catch(e) { alert("探索異常。"); } 
+            } catch(e) { alert("探索發生異常，請檢查網路連線。"); } 
             finally { loader.style.display = 'none'; btn.disabled = false; }
         }
 
-        // --- 搜尋鐵律：2.5 Flash ---
         async function getAiRecommendation(cfg) {
+            // 【鐵律：絕對使用 2.5 Flash】
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
+            
             let spatialPrompt = isNearbyMode ? `【鐵律：GPS 模式】必須搜尋以座標 (${userCoords.lat}, ${userCoords.lng}) 為中心「半徑 1 公里內」的店家。` : 
                                (cfg.transport !== 'none' && cfg.station ? `【鐵律：交通導向】必須搜尋離「${cfg.city}${cfg.station}」步行 800 公尺 (10分鐘) 內能抵達的店家。` : `【鐵律：行政區模式】搜尋整個「${cfg.city}${cfg.district}」範圍內最出色的店家。`);
 
-            const prompt = `你是美食專家。請利用 Google Search 搜尋台灣真實店家。
+            const prompt = `你是專業美食專家。請利用 Google Search 搜尋台灣真實店家資訊：
                 1. 空間限制：${spatialPrompt}
-                2. 數量：必須找滿 6 家店。${(cfg.isHidden || cfg.isOpenOnly) ? "(若條件極嚴苛，最少不得低於 3 家)" : ""}
+                2. 數量鐵律：必須找滿 6 家店家。
                 3. 需求：類別「${cfg.food}」、用途「${cfg.purpose}」、預算「${cfg.budget}」。
                 4. ${cfg.isHidden ? "優先找 Google 評論不多但高分的隱藏版。" : "找當地最高評分的人氣名店。"}
                 5. ${cfg.isOpenOnly ? `即時核對：確認台灣時間 ${cfg.userTime} 該店營業中。` : ""}
-                6. 輸出：純 JSON 陣列，不含 Markdown，禁止出現 [1] 或 【1】 等註腳。格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
+                6. 輸出鐵律：只回傳純 JSON 陣列，禁止包含 Markdown 標記 (\`\`\`json) 或聯網引用註腳如 [1]、[2]、【1】。
+                JSON 格式：[{"name":"店名","rating":"評分","hours":"營業時間","price":"價位","signature":"招牌菜","review_summary":"短評","address":"詳細地址","lat":緯度數字,"lng":經度數字}]`;
 
             try {
-                const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] }) });
+                const response = await fetch(url, { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] }) 
+                });
+                
                 const result = await response.json();
-                if (result.error) return { error: "⚠️ API 限制中，請稍候再試。" };
+                
+                // --- 精確報錯攔截 ---
+                if (result.error) {
+                    const status = result.error.code;
+                    const msg = result.error.message;
+                    if (status === 429) return { error: "⚠️ Google 伺服器忙碌中 (429)，請稍等一分鐘讓配額重置。" };
+                    if (msg.includes("API key")) return { error: "🔑 API Key 無效，請檢查設定。" };
+                    return { error: "❌ API 錯誤：" + msg };
+                }
+
+                if (!result.candidates || !result.candidates[0].content) {
+                    return { error: "🛡️ 搜尋內容觸發安全過濾，請嘗試更換關鍵字。" };
+                }
+
                 let text = result.candidates[0].content.parts[0].text;
-                text = text.replace(/\[\d+\]/g, "").replace(/【\d+】/g, "").replace(/```json|```/g, "").trim();
-                return { data: JSON.parse(text.substring(text.indexOf('['), text.lastIndexOf(']') + 1)) };
-            } catch (e) { return { error: "解析失敗，請點擊搜尋重新嘗試。" }; }
+                
+                // --- 強效清洗：移除 Markdown 與所有可能破壞 JSON 的註腳 ---
+                text = text.replace(/```json|```/g, "").trim();
+                text = text.replace(/\[\d+\]/g, "").replace(/【\d+】/g, "").replace(/\[\s*\d+\s*\]/g, "");
+                
+                const startIdx = text.indexOf('[');
+                const endIdx = text.lastIndexOf(']');
+                if (startIdx === -1 || endIdx === -1) throw new Error("資料格式無法解析");
+                
+                const cleanedData = JSON.parse(text.substring(startIdx, endIdx + 1));
+                return { data: cleanedData };
+
+            } catch (e) { 
+                return { error: "⚠️ 解析失敗：建議放寬條件並再按一次搜尋。" }; 
+            }
         }
 
         // --- 卡片生存戰 ---
