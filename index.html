@@ -516,12 +516,14 @@ const airportMap = {
                 initSwipe(card, wrapper, res);
             });
 
+            // 保持返回按鈕，但會在 checkStackEnd 中隨 UI 一起關閉
             const closeBtn = document.createElement('button');
             closeBtn.className = 'close-swiper'; 
             closeBtn.innerText = '← 返回修改'; 
             closeBtn.onclick = resetUI;
             stack.appendChild(closeBtn); 
         }
+
 
         // --- 核心晉級與蓋章滑動功能 ---
         function initSwipe(card, wrapper, res) {
@@ -567,8 +569,10 @@ const airportMap = {
                 const remaining = document.querySelectorAll('.swipe-card-wrapper');
                 if (remaining.length === 0) {
                     if (keptRestaurants.length === 0) {
-                        alert("沒有喜歡的店家？再試著探索一次吧！");
+                        // 1. 先關閉遮罩介面，這樣「返回修改」按鈕就會跟著遮罩一起消失
                         resetUI();
+                        // 2. 介面清空後，再跳出您要求保留的訊息
+                        alert("沒有喜歡的店家？再試著探索一次吧！");
                     } else {
                         // 帶著喜歡的店家進入下一輪
                         const nextRoundData = [...keptRestaurants];
