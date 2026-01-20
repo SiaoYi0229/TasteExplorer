@@ -447,13 +447,14 @@ const airportMap = {
         async function getAiRecommendation(cfg) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            // 修正指令：嚴禁幻覺店名，強制要求正式官方名稱
-            const prompt = `你現在是專業美食檢索員。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
-            【核心要求】：
-            1. 正式店名：name 欄位必須填寫該店家的【官方正式正式名稱】。嚴禁使用使用者的搜尋詞、嚴禁自擬標題、嚴禁使用「xx推薦、xx必吃」等描述性文字。
-            2. 檢索品質：必須提供 6 家地圖上查得到的真實店家。
-            3. 價格格式：人均消費區間以「數字~數字」呈現。
-            4. 地圖精準度：map_query 必須是「行政區 + 完整官方店名」。
+            // 強化地理約束：加入「嚴格半徑」與「步行極限」指令
+            const prompt = `你現在是精準地理美食檢索員。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
+            【地理邊界嚴格指令】：
+            1. 物理距離限制：所有店家必須位於指定中心點（${cfg.locationLimit}）的實際半徑範圍內。如果是車站或座標，步行距離嚴禁超過 10 分鐘（約 800 公尺）。
+            2. 鄰近優先：若符合條件的店很多，請「由近到遠」排序，並只挑選最靠近中心點的 6 家店。
+            3. 正式店名：name 必須是 Google 地圖上的【官方正式名稱】，嚴禁幻覺。
+            4. 價格格式：數字~數字。
+            5. 地圖連結：map_query 必須包含「行政區 + 官方店名」，確保定位不偏移。
             
             【輸出規範】：
             僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。
@@ -467,7 +468,7 @@ const airportMap = {
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: { 
                             response_mime_type: "application/json",
-                            temperature: 0.3 // 調低溫度，減少 AI 亂改名字的機率
+                            temperature: 0.2 // 進一步調低溫度，強制 AI 遵守地理限制，不准隨意發揮
                         }
                     }) 
                 });
@@ -482,7 +483,6 @@ const airportMap = {
                 return { error: "資料傳輸不穩定，請再點擊一次探索。" }; 
             }
         }
-
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
             const stack = document.getElementById('card-stack'); 
