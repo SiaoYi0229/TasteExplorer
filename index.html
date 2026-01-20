@@ -447,13 +447,17 @@ const airportMap = {
         async function getAiRecommendation(cfg) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            const prompt = `你現在是美食檢索專家。請從知識庫中檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
-            【核心任務】：
-            1. 數量：務必提供 6 家真實存在的店。
-            2. 價格格式：人均消費區間請以「數字~數字」呈現。
-            3. 用餐目的：針對「${cfg.purpose}」給出推薦原因。
-            4. 僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。
-            5. 嚴格禁止 Markdown 標籤與解釋文字。`;
+            // 修正指令：嚴禁幻覺店名，強制要求正式官方名稱
+            const prompt = `你現在是專業美食檢索員。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
+            【核心要求】：
+            1. 正式店名：name 欄位必須填寫該店家的【官方正式正式名稱】。嚴禁使用使用者的搜尋詞、嚴禁自擬標題、嚴禁使用「xx推薦、xx必吃」等描述性文字。
+            2. 檢索品質：必須提供 6 家地圖上查得到的真實店家。
+            3. 價格格式：人均消費區間以「數字~數字」呈現。
+            4. 地圖精準度：map_query 必須是「行政區 + 完整官方店名」。
+            
+            【輸出規範】：
+            僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。
+            嚴格禁止 Markdown 標籤與解釋文字。`;
 
             try {
                 const response = await fetch(url, { 
@@ -461,7 +465,10 @@ const airportMap = {
                     headers: { "Content-Type": "application/json" }, 
                     body: JSON.stringify({ 
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { response_mime_type: "application/json", temperature: 0.5 }
+                        generationConfig: { 
+                            response_mime_type: "application/json",
+                            temperature: 0.3 // 調低溫度，減少 AI 亂改名字的機率
+                        }
                     }) 
                 });
 
@@ -472,7 +479,7 @@ const airportMap = {
                 const data = JSON.parse(text);
                 return { data: data };
             } catch (e) { 
-                return { error: "資料傳輸不穩定，請再試一次。" }; 
+                return { error: "資料傳輸不穩定，請再點擊一次探索。" }; 
             }
         }
 
