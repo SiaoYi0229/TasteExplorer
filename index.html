@@ -175,7 +175,7 @@
         <div class="card-stack" id="card-stack"></div>
     </div>
 
-    <script>
+<script>
         // --- 核心數據 (底圖 100% 恢復) ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
@@ -381,7 +381,7 @@ const airportMap = {
         function saveApiKey() { const k = document.getElementById('api-key-input').value.trim(); if(k) { localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', k); document.getElementById('api-overlay').style.display='none'; updateUsageDisplay(); } }
         function updateUsageDisplay() { const count = getUsageCount(); document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`; const btn = document.getElementById('search-btn'); btn.disabled = (count >= DAILY_LIMIT); btn.innerText = (count >= DAILY_LIMIT) ? "今日次數已滿" : "開始探索美食"; }
 
-        // --- 修正後的核心執行流程 ---
+        // --- 核心執行流程 ---
         async function handleSearchClick() {
             if (!getStoredKey()) { document.getElementById('api-overlay').style.display = 'flex'; return; }
             if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日次數已滿。"); return; }
@@ -523,7 +523,7 @@ const airportMap = {
             stack.appendChild(closeBtn); 
         }
 
-        // --- 補齊缺失的滑動功能 ---
+        // --- 核心晉級與蓋章滑動功能 ---
         function initSwipe(card, wrapper, res) {
             let startX = 0, currentX = 0;
             card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; card.style.transition = 'none'; });
@@ -536,11 +536,23 @@ const airportMap = {
             });
             card.addEventListener('touchend', () => {
                 card.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                if (currentX > 120 || currentX < -120) {
-                    card.style.transform = `translateX(${currentX * 5}px) rotate(${currentX / 2}deg)`;
+                if (currentX > 120) { // 右滑 (LIKE)
+                    if (isFinalOne) { // 最後一張，蓋章鎖死
+                        card.style.transform = `scale(1.05) rotate(0deg)`;
+                        card.classList.add('stamped');
+                        card.querySelector('.label-chosen').classList.add('active');
+                        card.querySelector('.label-like').style.opacity = 0;
+                    } else { // 晉級下一輪
+                        keptRestaurants.push(res);
+                        card.style.transform = `translateX(1000px) rotate(30deg)`;
+                        card.style.opacity = '0';
+                        checkStackEnd(wrapper);
+                    }
+                } else if (currentX < -120) { // 左滑 (NOPE)
+                    card.style.transform = `translateX(-1000px) rotate(-30deg)`;
                     card.style.opacity = '0';
-                    setTimeout(() => wrapper.remove(), 400);
-                } else {
+                    checkStackEnd(wrapper);
+                } else { // 彈回
                     card.style.transform = '';
                     card.querySelector('.label-like').style.opacity = 0;
                     card.querySelector('.label-nope').style.opacity = 0;
@@ -548,8 +560,26 @@ const airportMap = {
                 currentX = 0;
             });
         }
+
+        function checkStackEnd(wrapper) {
+            setTimeout(() => {
+                wrapper.remove();
+                const remaining = document.querySelectorAll('.swipe-card-wrapper');
+                if (remaining.length === 0) {
+                    if (keptRestaurants.length === 0) {
+                        alert("沒有喜歡的店家？再試著探索一次吧！");
+                        resetUI();
+                    } else {
+                        // 帶著喜歡的店家進入下一輪
+                        const nextRoundData = [...keptRestaurants];
+                        keptRestaurants = []; 
+                        renderCards(nextRoundData);
+                    }
+                }
+            }, 400);
+        }
         
-        function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
+        function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); keptRestaurants = []; }
 
         window.onload = () => {
             initLocationWatch(); updateDistricts(); updateUsageDisplay();
