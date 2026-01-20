@@ -344,7 +344,7 @@ const airportMap = {
         function initLocationWatch() { if ("geolocation" in navigator) { navigator.geolocation.watchPosition((pos) => { userCoords.lat = pos.coords.latitude; userCoords.lng = pos.coords.longitude; if (!isNearbyMode) document.getElementById('coords-text').innerText = `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)`; }, () => {}, { enableHighAccuracy: true }); } }
         function toggleNearbyMode() { isNearbyMode = !isNearbyMode; const btn = document.getElementById('location-display'); const fields = document.querySelectorAll('.nearby-toggle'); if (isNearbyMode) { btn.classList.add('active-mode'); fields.forEach(f => f.classList.add('hide-field')); document.getElementById('mrt-section').style.display = 'none'; document.getElementById('coords-text').innerText = "🎯 搜尋附近 1公里 內美食"; } else { btn.classList.remove('active-mode'); fields.forEach(f => f.classList.remove('hide-field')); checkTransAvailability(); document.getElementById('coords-text').innerText = userCoords.lat ? `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)` : "正在取得 GPS 座標..."; } }
         function updateDistricts() { const city = document.getElementById('city').value; document.getElementById('district').innerHTML = cityData[city].map(d => `<option value="${d}">${d}</option>`).join(''); }
-        // --- 修正：交通站點判斷與圖示動態切換 ---
+        // --- 修正：交通站點判斷與「指定站點」圖示切換 ---
         function checkTransAvailability() {
             const city = document.getElementById('city').value;
             const transport = document.getElementById('transport').value;
@@ -354,14 +354,15 @@ const airportMap = {
             const label = document.getElementById('trans-label');
             const mainLabel = document.getElementById('transport-main-label');
 
-            // 1. 動態更換「交通偏好」前方的圖示
+            // 1. 更新上方「交通偏好」的主圖示 (確保同步)
             const iconMap = { none: '🚆', mrt: '🚇', hsr: '🚄', train: '🚂', airport: '✈️' };
-            mainLabel.innerText = `${iconMap[transport]} 交通偏好`;
+            if (mainLabel) mainLabel.innerText = `${iconMap[transport]} 交通偏好`;
 
             if (transport === 'none' || isNearbyMode) { mrtSec.style.display = 'none'; return; }
             mrtSec.style.display = 'block';
 
             if (transport === 'mrt') {
+                // --- 這裡修正：指定捷運站圖示 ---
                 label.innerText = "🚇 指定捷運站 (依線路分類)";
                 let linesData = (city === 'Taipei' ? mrtLinesTaipei : (city === 'NewTaipei' ? mrtLinesNewTaipei : (city === 'Taoyuan' ? mrtLinesTaoyuan : (city === 'Taichung' ? mrtLinesTaichung : (city === 'Kaohsiung' ? mrtLinesKaohsiung : null)))));
                 if (district === '全區' && linesData) {
@@ -372,8 +373,11 @@ const airportMap = {
                     mrtSel.innerHTML = '<option value="">--- 請選擇 ---</option>' + mrtMap[city][district].map(s => `<option value="${s}">${s}站</option>`).join('');
                 } else { mrtSel.innerHTML = '<option value="">該區暫無捷運站</option>'; }
             } else {
+                // --- 這裡修正：火車(🚂)、高鐵(🚄)、機場(✈️)圖示 ---
+                const transLabelName = { train: '火車', hsr: '高鐵', airport: '機場' };
+                label.innerText = `${iconMap[transport]} 指定${transLabelName[transport]}站`;
+                
                 let currentMap = (transport === 'train' ? trainMap : (transport === 'hsr' ? hsrMap : airportMap));
-                label.innerText = `🚉 指定${transport === 'train' ? '火車' : (transport === 'hsr' ? '高鐵' : '機場')}站`;
                 if (currentMap[city]) {
                     let list = (district === '全區' ? Object.values(currentMap[city]).flat() : (currentMap[city][district] || []));
                     list = [...new Set(list)].sort();
@@ -381,7 +385,6 @@ const airportMap = {
                 } else { mrtSel.innerHTML = '<option value="">該區暫無站點</option>'; }
             }
         }
-
         // --- 修正：卡片渲染 (LIKE 標籤統一，不論是否為最後一張) ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
