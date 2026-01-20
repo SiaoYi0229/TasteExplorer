@@ -436,7 +436,7 @@ const airportMap = {
             };
 
             if (isNearbyMode) {
-                config.locationLimit = `GPS座標 (${userCoords.lat}, ${userCoords.lng}) 半徑 0.5公里內`;
+                config.locationLimit = `GPS座標 (${userCoords.lat}, ${userCoords.lng}) 半徑 1公里內`;
             } else if (config.transport !== 'none' && config.station) {
                 config.locationLimit = `${config.city}${config.station} 站步行 800 公尺內`;
             } else {
@@ -461,17 +461,16 @@ const airportMap = {
             }
         }
 
-        aasync function getAiRecommendation(cfg) {
+        async function getAiRecommendation(cfg) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            // --- 強化指令：新增營業時間、彙整真實評論、強控距離與店名 ---
-            const prompt = `你現在是美食數據分析師。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
-            【數據精確指令】：
-            1. 官方店名：name 必須是 Google 地圖官方正式名稱。嚴禁幻覺。
-            2. 地理邊界：店家必須位於 ${cfg.locationLimit} 實際物理 1 公里內。嚴禁回傳遠處店家。
-            3. 營業時間 (opening_hours)：請提供該店家的營業時段摘要 (例如: 11:00-21:00，若有午休請註明)。
-            4. 真實評論摘要 (review_summary)：必須彙整 Google 地圖上真實顧客的反饋精華。
-            5. 店家核心強項 (reason)：描述該店的真實競爭力（如職人手藝、獨門配方）。
+            const prompt = `你現在是美食數據專家。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
+            【數據正確性嚴格要求】：
+            1. 官方店名：name 必須與 Google Maps 上的【標題名稱 100% 一致】。禁止自行添加或刪除「(xx店)」、「分店」或「xx分號」。地圖上怎麼寫，你就怎麼傳，嚴禁加工。
+            2. 數量保證：請找齊 6 家真實存在的店。即便在巷弄內，也請優先找真實存在的餐廳，不要因為距離限制而縮減數量。
+            3. 地理邊界：店家必須位於 ${cfg.locationLimit} 半徑 1 公里內，嚴禁 2公里外的偏移。
+            4. 真實評論摘要 (review_summary)：請彙整 Google 地圖上真實顧客的反饋。
+            5. 店家核心強項 (reason)：描述該店真正的優勢（如職人手藝、獨門醬汁）。
             
             【輸出規範】：僅輸出純 JSON 陣列。欄位：name, rating, price, signature, opening_hours, review_summary, reason, map_query。不要解釋文字。`;
 
@@ -481,22 +480,15 @@ const airportMap = {
                     headers: { "Content-Type": "application/json" }, 
                     body: JSON.stringify({ 
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { 
-                            response_mime_type: "application/json",
-                            temperature: 0.2 // 極低溫度確保數據準確
-                        }
+                        generationConfig: { response_mime_type: "application/json", temperature: 0.2 }
                     }) 
                 });
-
                 const result = await response.json();
                 if (result.error) return { error: `API 請求失敗: ${result.error.message}` };
-                
                 const text = result.candidates[0].content.parts[0].text;
                 const data = JSON.parse(text);
                 return { data: data };
-            } catch (e) { 
-                return { error: "資料不穩定，請再點擊一次探索。" }; 
-            }
+            } catch (e) { return { error: "資料傳輸不穩定，請再點擊一次探索。" }; }
         }
         // --- 修正後的卡片渲染：右上角標籤固定為 LIKE ---
         function renderCards(restaurants) {
