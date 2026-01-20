@@ -266,75 +266,73 @@
         }
 
         async function startSearch() {
-            const loader = document.getElementById('loader');
-            const btn = document.getElementById('search-btn');
-            if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
-            
-            btn.disabled = true;
-            loader.style.display = 'flex';
+    const loader = document.getElementById('loader');
+    const btn = document.getElementById('search-btn');
+    if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
+    
+    btn.disabled = true;
+    loader.style.display = 'flex';
 
-            try {
-                const config = {
-                    apiKey: getStoredKey(),
-                    city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-                    district: document.getElementById('district').value,
-                    transport: document.getElementById('transport').value,
-                    station: document.getElementById('mrt-station').value,
-                    food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
-                    purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
-                    budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
-                    isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
-                    isOpenOnly: document.getElementById('btn-open').classList.contains('selected')
-                };
+    try {
+        const config = {
+            apiKey: getStoredKey(),
+            city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+            district: document.getElementById('district').value,
+            transport: document.getElementById('transport').value,
+            station: document.getElementById('mrt-station').value,
+            food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
+            purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
+            budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
+            isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
+            isOpenOnly: document.getElementById('btn-open').classList.contains('selected')
+        };
 
-                // --- 嚴格範圍判定流程 ---
-                if (isNearbyMode) {
-                    config.locationRequirement = `我的 GPS 座標為 (${userCoords.lat}, ${userCoords.lng})，請搜尋以此為中心「半徑 1 公里內」的店家。`;
-                } else if (config.transport !== 'none' && config.station) {
-                    config.locationRequirement = `請搜尋「${config.city}${config.station}」出口步行距離「800 公尺內」的店家。`;
-                } else {
-                    config.locationRequirement = `請搜尋「${config.city}${config.district}」行政區內的所有優質店家。`;
-                }
-
-                const res = await getAiRecommendation(config);
-                
-                if(res.error) { 
-                    alert(res.error); 
-                } else if(res.data && res.data.length > 0) {
-                    incrementUsage();
-                    keptRestaurants = []; isFinalOne = false;
-                    renderCards(res.data); 
-                } else { 
-                    alert("🔍 找不到符合條件的店家，建議更換類別再試。"); 
-                }
-            } catch(e) { 
-                alert("搜尋發生預期外錯誤。"); 
-            } finally { 
-                loader.style.display = 'none'; 
-                btn.disabled = false; 
-            }
+        // 地理範圍描述
+        if (isNearbyMode) {
+            config.locationLimit = `座標 (${userCoords.lat}, ${userCoords.lng}) 附近 1 公里內`;
+        } else if (config.transport !== 'none' && config.station) {
+            config.locationLimit = `${config.city}${config.station} 站步行 800 公尺內`;
+        } else {
+            config.locationLimit = `${config.city}${config.district} 區域內`;
         }
+
+        const res = await getAiRecommendation(config);
+        
+        if(res.error) { 
+            alert(res.error); 
+            // 發生錯誤，停止流程，不呼叫 renderCards
+            return;
+        } 
+        
+        if(res.data && res.data.length > 0) {
+            incrementUsage();
+            keptRestaurants = []; 
+            isFinalOne = false;
+            renderCards(res.data); // 只有成功取得資料才進入卡片模式
+        } else { 
+            alert("🔍 目前條件下找不更多美食，建議放寬條件試試。"); 
+        }
+    } catch(e) { 
+        alert("搜尋發生預期外錯誤，請重試。"); 
+    } finally { 
+        loader.style.display = 'none'; 
+        btn.disabled = false; 
+    }
+}
 
        async function getAiRecommendation(cfg) {
     // 絕對保留 gemini-2.5-flash
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-    const prompt = `你現在是美食專家。請從知識庫中檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」、預算分類為「${cfg.budget}」且適合「${cfg.purpose}」的店家。
+    const prompt = `你現在是美食專家。請從知識庫檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」、預算分類為「${cfg.budget}」且適合「${cfg.purpose}」的店家。
     
-    【數量與價格要求】：
-    1. 數量：一般情況下「必須」回傳 6 家真實存在的店。只有在勾選「隱藏版」或「營業中」且該區真的沒店時才允許減少數量。
-    2. 價格格式：請根據預算分類提供估計的人均消費區間，格式為「數字~數字」(例如 200~400)，不要使用符號。
+    【任務規則】：
+    1. 數量：必須找滿 6 家店（除非勾選隱藏版或營業中）。
+    2. 價格：格式為「數字~數字」(例如 300~500)，不要符號。
+    3. 嚴禁杜撰店名。
     
-    【輸出內容】：
-    - name: 店名
-    - rating: 星等
-    - price: 價格區間 (如 300~600)
-    - signature: 必點招牌
-    - review_summary: 評論摘要
-    - reason: 推薦理由 (針對${cfg.purpose}說明)
-    - map_query: 搜尋關鍵字 (店名 + 行政區)
-
-    【限制】：禁止發明店名。輸出純 JSON 陣列，不含註腳或地址。`;
+    【輸出欄位】：name, rating, price, signature, review_summary, reason, map_query。
+    【格式要求】：只輸出一個純 JSON 陣列，禁止包含 Markdown 代碼塊、註腳或任何解釋文字。`;
 
     try {
         const response = await fetch(url, { 
@@ -343,23 +341,43 @@
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
-                    response_mime_type: "application/json",
-                    temperature: 0.4 // 稍微提高一點，讓 AI 能從資料庫撈出更多備選店家
+                    response_mime_type: "application/json", // 強制輸出格式
+                    temperature: 0.5 
                 }
             }) 
         });
 
         const result = await response.json();
-        if (result.error) return { error: `API 錯誤: ${result.error.message}` };
+        
+        if (result.error) {
+            return { error: `API 錯誤: ${result.error.message}` };
+        }
+
+        if (!result.candidates || !result.candidates[0].content) {
+            return { error: "AI 未能生成有效建議，請再試一次。" };
+        }
 
         let text = result.candidates[0].content.parts[0].text;
+        
+        // --- 核彈級物理清洗 JSON ---
+        // 1. 移除 Markdown 標記 (如 ```json)
+        text = text.replace(/```json/g, "").replace(/```/g, "");
+        // 2. 找到第一個 [ 和最後一個 ]，只取中間的部分
         const start = text.indexOf('[');
         const end = text.lastIndexOf(']');
-        const data = JSON.parse(text.substring(start, end + 1));
+        
+        if (start === -1 || end === -1) {
+            throw new Error("JSON 格式不完整");
+        }
+        
+        const cleanedJson = text.substring(start, end + 1);
+        const data = JSON.parse(cleanedJson);
 
         return { data: data };
+
     } catch (e) { 
-        return { error: "解析資料失敗，請重試一次。" }; 
+        console.error("Parse Error:", e);
+        return { error: "資料解析出錯，請再點擊一次搜尋。" }; 
     }
 }
         // --- 卡片生存系統 (100% 晉級制) ---
