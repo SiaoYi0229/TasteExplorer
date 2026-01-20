@@ -461,19 +461,19 @@ const airportMap = {
             }
         }
 
-        async function getAiRecommendation(cfg) {
+        aasync function getAiRecommendation(cfg) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            // --- 強化指令：要求挖掘店家真實的靈魂亮點，嚴禁罐頭文字 ---
-            const prompt = `你現在是美食界權威評論員。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
-            【絕對精準指令】：
+            // --- 強化指令：新增營業時間、彙整真實評論、強控距離與店名 ---
+            const prompt = `你現在是美食數據分析師。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
+            【數據精確指令】：
             1. 官方店名：name 必須是 Google 地圖官方正式名稱。嚴禁幻覺。
             2. 地理邊界：店家必須位於 ${cfg.locationLimit} 實際物理 1 公里內。嚴禁回傳遠處店家。
-            3. 人性化評論 (review_summary)：請寫出一句富有生活感、像在地老饕推薦的精闢短評。
-            4. 真實核心優點 (reason)：不要只說符合目的。請深入描述這家店【真正厲害的地方】（例如：老闆對食材的職人堅持、獨門的醬汁配方、火候掌控、或是特定的用餐氛圍感）。每家店的內容【絕對不准重複】，要讓使用者讀完後真的感受到這家店的特色。
-            5. 價格格式：數字~數字。
+            3. 營業時間 (opening_hours)：請提供該店家的營業時段摘要 (例如: 11:00-21:00，若有午休請註明)。
+            4. 真實評論摘要 (review_summary)：必須彙整 Google 地圖上真實顧客的反饋精華。
+            5. 店家核心強項 (reason)：描述該店的真實競爭力（如職人手藝、獨門配方）。
             
-            【輸出規範】：僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。不要解釋文字。`;
+            【輸出規範】：僅輸出純 JSON 陣列。欄位：name, rating, price, signature, opening_hours, review_summary, reason, map_query。不要解釋文字。`;
 
             try {
                 const response = await fetch(url, { 
@@ -483,7 +483,7 @@ const airportMap = {
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: { 
                             response_mime_type: "application/json",
-                            temperature: 0.4 // 維持 0.4，確保文字優美且不失精確
+                            temperature: 0.2 // 極低溫度確保數據準確
                         }
                     }) 
                 });
@@ -495,7 +495,7 @@ const airportMap = {
                 const data = JSON.parse(text);
                 return { data: data };
             } catch (e) { 
-                return { error: "資料傳輸不穩定，請再點擊一次探索。" }; 
+                return { error: "資料不穩定，請再點擊一次探索。" }; 
             }
         }
         // --- 修正後的卡片渲染：右上角標籤固定為 LIKE ---
@@ -527,6 +527,7 @@ const airportMap = {
                         <span class="card-badge badge-price">💰 價位 NT$ ${res.price}</span>
                     </div>
                     <div class="info-row"><span class="info-label">🔥 必點招牌</span><span>${res.signature}</span></div>
+                    <div class="info-row"><span class="info-label">🕒 營業時間</span><span>${res.opening_hours}</span></div>
                     <div class="card-summary">"${res.review_summary}"</div>
                     <div class="info-row" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
                         <span class="info-label">💡 推薦原因</span><span style="color:var(--accent-yellow)">${res.reason}</span>
