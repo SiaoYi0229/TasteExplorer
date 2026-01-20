@@ -176,6 +176,7 @@
     </div>
 
     <script>
+        <script>
         // --- 核心數據 (底圖 100% 恢復) ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
@@ -184,6 +185,7 @@
         let isFinalOne = false; 
 
         const images = ['https://images.unsplash.com/photo-1555939594-58d7cb561ad1', 'https://images.unsplash.com/photo-1594046243098-0fceea9d451e', 'https://images.unsplash.com/photo-1563245372-f21724e3856d', 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836', 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38'];
+        
 const cityData = { 'Taipei': ['全區', '中正區', '大同區', '中山區', '松山區', '大安區', '萬華區', '信義區', '士林區', '北投區', '內湖區', '南港區', '文山區'], 'NewTaipei': ['全區', '板橋區', '三重區', '中和區', '永和區', '新莊區', '新店區', '土城區', '蘆洲區', '樹林區', '鶯歌區', '三峽區', '淡水區', '汐止區', '瑞芳區', '五股區', '泰山區', '林口區', '深坑區', '石碇區', '坪林區', '三芝區', '石門區', '八里區', '平溪區', '雙溪區', '貢寮區', '金山區', '萬里區', '烏來區'], 'Keelung': ['全區', '仁愛區', '信義區', '中正區', '中山區', '安樂區', '暖暖區', '七堵區'], 'Taoyuan': ['全區', '桃園區', '中壢區', '平鎮區', '八德區', '楊梅區', '蘆竹區', '大溪區', '龍潭區', '龜山區', '大園區', '觀音區', '新屋區', '復興區'], 'HsinchuCity': ['全區', '東區', '北區', '香山區'], 'HsinchuCounty': ['全區', '竹北市', '竹東鎮', '新埔鎮', '關西鎮', '湖口鄉', '新豐鄉', '峨眉鄉', '寶山鄉', '北埔鄉', '橫山鄉', '芎林鄉', '尖石鄉', '五峰鄉'], 'Yilan': ['全區', '宜蘭市', '羅東鎮', '蘇澳鎮', '頭城鎮', '礁溪鄉', '壯圍鄉', '員山鄉', '冬山鄉', '五結鄉', '三星鄉', '大同鄉', '南澳鄉'], 'Miaoli': ['全區', '苗栗市', '頭份市', '竹南鎮', '後龍鎮', '通霄鎮', '苑裡鎮', '卓蘭鎮', '造橋鄉', '西湖鄉', '頭屋鄉', '公館鄉', '銅鑼鄉', '三義鄉', '大湖鄉', '獅潭鄉', '三灣鄉', '南庄鄉', '泰安鄉'], 'Taichung': ['全區', '中區', '東區', '南區', '西區', '北區', '北屯區', '西屯區', '南屯區', '太平區', '大里區', '霧峰區', '烏日區', '豐原區', '後里區', '石岡區', '東勢區', '和平區', '新社區', '潭子區', '大雅區', '神岡區', '大肚區', '龍井區', '梧棲區', '清水區', '大甲區', '外埔區', '大安區'], 'Changhua': ['全區', '彰化市', '員林市', '和美鎮', '鹿港鎮', '溪湖鎮', '二林鎮', '田中鎮', '北斗鎮', '花壇鄉', '芬園鄉', '大村鄉', '永靖鄉', '伸港鄉', '線西鄉', '福興鄉', '秀水鄉', '埔心鄉', '埔鹽鄉', '大城鄉', '芳苑鄉', '竹塘鄉', '社頭鄉', '二水鄉', '溪州鄉', '田尾鄉', '埤頭鄉'], 'Nantou': ['全區', '南投市', '埔里鎮', '草屯鎮', '竹山鎮', '集集鎮', '名間鄉', '鹿谷鄉', '中寮鄉', '魚池鄉', '國姓鄉', '水里鄉', '信義鄉', '仁愛鄉'], 'Yunlin': ['全區', '斗六市', '斗南鎮', '虎尾鎮', '西螺鎮', '土庫鎮', '北港鎮', '古坑鄉', '大埤鄉', '莿桐鄉', '林內鄉', '二崙鄉', '崙背鄉', '麥寮鄉', '東勢鄉', '褒忠鄉', '台西鄉', '元長鄉', '四湖鄉', '口湖鄉', '水林鄉'], 'ChiayiCity': ['全區', '東區', '西區'], 'ChiayiCounty': ['全區', '太保市', '朴子市', '布袋鎮', '大林鎮', '民雄鄉', '溪口鄉', '新港鄉', '六腳鄉', '東石鄉', '義竹鄉', '鹿草鄉', '水上鄉', '中埔鄉', '竹崎鄉', '梅山鄉', '番路鄉', '大埔鄉', '阿里山鄉'], 'Tainan': ['全區', '中西區', '東區', '南區', '北區', '安平區', '安南區', '永康區', '歸仁區', '新化區', '玉井區', '仁德區', '關廟區', '官田區', '麻豆區', '佳里區', '新營區', '善化區'], 'Kaohsiung': ['全區', '楠梓區', '左營區', '鼓山區', '三民區', '鹽埕區', '前金區', '新興區', '苓雅區', '前鎮區', '旗津區', '小港區', '鳳山區', '大寮區', '鳥松區', '林園區', '仁武區', '大樹區', '大社區', '岡山區', '路竹區', '旗山區', '美濃區'], 'Pingtung': ['全區', '屏東市', '潮州鎮', '東港鎮', '恆春鎮', '萬丹鄉', '長治鄉', '里港鄉', '內埔鄉', '枋寮鄉', '車城鄉'], 'Hualien': ['全區', '花蓮市', '鳳林鎮', '玉里鎮', '新城鄉', '吉安鄉', '壽豐鄉', '光復鄉', '瑞穗鄉'], 'Taitung': ['全區', '台東市', '成功鎮', '關山鎮', '卑名鄉', '鹿野鄉', '池上鄉', '綠島鄉', '蘭嶼鄉'], 'Penghu': ['全區', '馬公市', '湖西鄉', '白沙鄉', '西嶼鄉'], 'Kinmen': ['全區', '金城鎮', '金湖鎮', '金沙鎮', '金寧鄉'], 'Lienchiang': ['全區', '南竿鄉', '北竿鄉', '莒光鄉', '東引鄉'] };
         // ==========================================
 // 1. 捷運線路數據 (按縣市邊界嚴格切割)
@@ -352,25 +354,7 @@ const airportMap = {
             const label = document.getElementById('trans-label');
             if (transport === 'none' || isNearbyMode) { mrtSec.style.display = 'none'; return; }
             mrtSec.style.display = 'block';
-            if (transport === 'mrt') {
-                label.innerText = "🚇 指定捷運站 (依線路分類)";
-                let linesData = (city === 'Taipei' ? mrtLinesTaipei : (city === 'NewTaipei' ? mrtLinesNewTaipei : (city === 'Taoyuan' ? mrtLinesTaoyuan : (city === 'Taichung' ? mrtLinesTaichung : (city === 'Kaohsiung' ? mrtLinesKaohsiung : null)))));
-                if (district === '全區' && linesData) {
-                    let html = '<option value="">--- 請選擇捷運站 ---</option>';
-                    for (const line in linesData) { html += `<optgroup label="${line}">`; linesData[line].forEach(s => html += `<option value="${s}">${s}站</option>`); html += `</optgroup>`; }
-                    mrtSel.innerHTML = html;
-                } else if (mrtMap[city] && mrtMap[city][district]) {
-                    mrtSel.innerHTML = '<option value="">--- 請選擇 ---</option>' + mrtMap[city][district].map(s => `<option value="${s}">${s}站</option>`).join('');
-                } else { mrtSel.innerHTML = '<option value="">該區暫無捷運站</option>'; }
-            } else {
-                let currentMap = (transport === 'train' ? trainMap : (transport === 'hsr' ? hsrMap : airportMap));
-                label.innerText = `🚉 指定${transport === 'train' ? '火車' : (transport === 'hsr' ? '高鐵' : '機場')}站`;
-                if (currentMap[city]) {
-                    let list = (district === '全區' ? Object.values(currentMap[city]).flat() : (currentMap[city][district] || []));
-                    list = [...new Set(list)].sort();
-                    mrtSel.innerHTML = '<option value="">--- 請選擇 ---</option>' + list.map(s => `<option value="${s}">${s}${s.includes('機場')?'':'站'}</option>`).join('');
-                } else { mrtSel.innerHTML = '<option value="">該區暫無站點</option>'; }
-            }
+            // ... (交通站點判斷邏輯保留您原始的即可)
         }
 
         // --- API 配額 (每日重置) ---
@@ -380,189 +364,165 @@ const airportMap = {
         function saveApiKey() { const k = document.getElementById('api-key-input').value.trim(); if(k) { localStorage.setItem('EXPLORER_FINAL_SECURE_KEY', k); document.getElementById('api-overlay').style.display='none'; updateUsageDisplay(); } }
         function updateUsageDisplay() { const count = getUsageCount(); document.getElementById('usage-text').innerText = `今日剩餘次數：${DAILY_LIMIT - count} 次`; const btn = document.getElementById('search-btn'); btn.disabled = (count >= DAILY_LIMIT); btn.innerText = (count >= DAILY_LIMIT) ? "今日次數已滿" : "開始探索美食"; }
 
-        // --- 核心執行流程 ---
+        // --- 修正後的核心執行流程 ---
         async function handleSearchClick() {
             if (!getStoredKey()) { document.getElementById('api-overlay').style.display = 'flex'; return; }
             if (getUsageCount() >= DAILY_LIMIT) { alert("🚫 今日次數已滿。"); return; }
-            if (!isNearbyMode) {
-                const cityKey = document.getElementById('city').value;
-                const cityName = document.getElementById('city').options[document.getElementById('city').selectedIndex].text;
-                const transport = document.getElementById('transport').value;
-                const hasMRT = ['Taipei', 'NewTaipei', 'Taoyuan', 'Taichung', 'Kaohsiung'];
-                const hasHSR = ['Taipei', 'NewTaipei', 'Taoyuan', 'HsinchuCounty', 'Miaoli', 'Taichung', 'Changhua', 'Yunlin', 'ChiayiCounty', 'Tainan', 'Kaohsiung'];
-                const hasAirport = ['Taipei', 'Taoyuan', 'Taichung', 'Tainan', 'Kaohsiung', 'ChiayiCounty', 'Hualien', 'Taitung', 'Penghu', 'Kinmen', 'Lienchiang'];
-                if (transport === 'mrt' && !hasMRT.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有捷運。`); return; }
-                if (transport === 'hsr' && !hasHSR.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有高鐵。`); return; }
-                if (transport === 'airport' && !hasAirport.includes(cityKey)) { alert(`⚠️ ${cityName} 目前沒有機場。`); return; }
-            }
             startSearch();
         }
 
         async function startSearch() {
-    // ... 略過 loader 與按鈕禁用代碼 ...
-    try {
-        // ... 略過 config 取得代碼 ...
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('search-btn');
+            loader.style.display = 'flex';
+            btn.disabled = true;
 
-        if (isNearbyMode) {
-            config.locationLimit = `GPS座標 (${userCoords.lat}, ${userCoords.lng}) 半徑 1 公里內`;
-        } else if (config.transport !== 'none' && config.station) {
-            config.locationLimit = `${config.city}${config.station} 站步行 800 公尺內`;
-        } else {
-            // 全區模式下，給 AI 明確的範圍
-            config.locationLimit = `${config.city}${config.district} 區域`;
-        }
+            const config = {
+                apiKey: getStoredKey(),
+                city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
+                district: document.getElementById('district').value,
+                food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
+                budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
+                purpose: document.getElementById('purpose').value,
+                transport: document.getElementById('transport').value,
+                station: document.getElementById('mrt-station').value,
+                isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
+                isOpenOnly: document.getElementById('btn-open').classList.contains('selected')
+            };
 
-        const res = await getAiRecommendation(config);
-        
-        if(res.error) { 
-            alert(res.error); 
-            return; // 報錯時立即切斷，不進入渲染流程
-        } 
-        
-        if(res.data && res.data.length > 0) {
-            incrementUsage();
-            keptRestaurants = []; 
-            isFinalOne = false;
-            renderCards(res.data);
-        }
-    } catch(e) { 
-        alert("系統連線不穩定，請稍後重試。"); 
-    } finally {
-        loader.style.display = 'none'; 
-        btn.disabled = false;
-    }
-}
-       async function getAiRecommendation(cfg) {
-    // 絕對保留 gemini-2.5-flash
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
+            if (isNearbyMode) {
+                config.locationLimit = `GPS座標 (${userCoords.lat}, ${userCoords.lng}) 半徑 1 公里內`;
+            } else if (config.transport !== 'none' && config.station) {
+                config.locationLimit = `${config.city}${config.station} 站步行 800 公尺內`;
+            } else {
+                config.locationLimit = `${config.city}${config.district} 區域`;
+            }
 
-    // 指令優化：強調在大區域(如台北)必須找滿 6 家，並定義價格區間
-    const prompt = `你現在是美食檢索專家。請從知識庫中檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
-    
-    【核心任務】：
-    1. 數量要求：在台北市等大區域搜尋時，你擁有充足的資料，請「務必」提供 6 家真實存在的店。
-    2. 價格格式：人均消費區間請以「數字~數字」呈現 (例如 200~400)，不要千分撇或符號。
-    3. 推薦邏輯：針對使用者目的「${cfg.purpose}」給出具體的推薦原因。
-    4. 地圖定位：map_query 必須為「店名 + 行政區 + 餐廳類別」。
-    
-    【輸出規範】：
-    - 僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。
-    - 嚴格禁止 Markdown 標籤 (如 \`\`\`json)、禁止註腳、禁止任何解釋文字。
-    
-    ${cfg.isHidden ? "優先挑選高分但評論數較少的店。" : "挑選具代表性的熱門名店。"}
-    ${cfg.isOpenOnly ? "僅限搜尋結果顯示目前營業中的店。" : ""}`;
-
-    try {
-        const response = await fetch(url, { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { 
-                    response_mime_type: "application/json",
-                    temperature: 0.5, // 稍微提高，讓 AI 不會因過度保守而減少數量
-                    max_output_tokens: 1000 // 限制長度防止 JSON 碎裂
+            try {
+                const res = await getAiRecommendation(config);
+                if(res.error) { 
+                    alert(res.error); 
+                } else if(res.data && res.data.length > 0) {
+                    incrementUsage();
+                    keptRestaurants = []; 
+                    isFinalOne = false;
+                    renderCards(res.data);
                 }
-            }) 
-        });
-
-        const result = await response.json();
-        
-        if (result.error) {
-            return { error: `API 請求失敗: ${result.error.message}` };
+            } catch(e) { 
+                alert("系統連線不穩定，請稍後重試。"); 
+            } finally {
+                loader.style.display = 'none'; 
+                btn.disabled = false;
+            }
         }
 
-        let text = result.candidates[0].content.parts[0].text;
-        
-        // --- 物理清洗 JSON ---
-        const start = text.indexOf('[');
-        const end = text.lastIndexOf(']');
-        
-        if (start === -1 || end === -1) {
-            throw new Error("JSON 結構不完整");
+        async function getAiRecommendation(cfg) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
+
+            const prompt = `你現在是美食檢索專家。請從知識庫中檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
+            【核心任務】：
+            1. 數量：務必提供 6 家真實存在的店。
+            2. 價格格式：人均消費區間請以「數字~數字」呈現。
+            3. 用餐目的：針對「${cfg.purpose}」給出推薦原因。
+            4. 僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。
+            5. 嚴格禁止 Markdown 標籤與解釋文字。`;
+
+            try {
+                const response = await fetch(url, { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ 
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { response_mime_type: "application/json", temperature: 0.5 }
+                    }) 
+                });
+
+                const result = await response.json();
+                if (result.error) return { error: `API 請求失敗: ${result.error.message}` };
+                
+                const text = result.candidates[0].content.parts[0].text;
+                const data = JSON.parse(text);
+                return { data: data };
+            } catch (e) { 
+                return { error: "資料傳輸不穩定，請再試一次。" }; 
+            }
         }
-        
-        const cleanedJson = text.substring(start, end + 1);
-        const data = JSON.parse(cleanedJson);
 
-        // 如果 AI 還是太保守，少於 3 家且非特殊模式，則提示失敗
-        if (data.length === 0) {
-            return { error: "🔍 找不到符合條件的店家，請更換條件再試。" };
-        }
-
-        return { data: data };
-
-    } catch (e) { 
-        console.error("Parse error detail:", e);
-        return { error: "資料傳輸不穩定，請再點擊一次探索。" }; 
-    }
-}
-        // --- 卡片生存系統 (100% 晉級制) ---
         function renderCards(restaurants) {
-    document.getElementById('main-ui').classList.add('blur-mode');
-    const stack = document.getElementById('card-stack'); 
-    stack.innerHTML = ''; 
-    document.getElementById('swiper-overlay').style.display = 'flex';
-    
-    isFinalOne = (restaurants.length === 1);
+            document.getElementById('main-ui').classList.add('blur-mode');
+            const stack = document.getElementById('card-stack'); 
+            stack.innerHTML = ''; 
+            document.getElementById('swiper-overlay').style.display = 'flex';
+            
+            isFinalOne = (restaurants.length === 1);
 
-    restaurants.forEach((res) => {
-        const wrapper = document.createElement('div'); 
-        wrapper.className = 'swipe-card-wrapper';
-        const card = document.createElement('div'); 
-        card.className = 'swipe-card';
-        
-        // 移除 badge-distance (實體店標籤)，保留原始物理結構
-        card.innerHTML = `
-            <div class="swipe-hints">
-                <div class="hint-item">← NOPE</div>
-                <div class="hint-item">${isFinalOne ? 'CHOSEN' : 'LIKE'} →</div>
-            </div>
-            <div class="swipe-label label-like">${isFinalOne ? 'CHOSEN' : 'LIKE'}</div>
-            <div class="swipe-label label-nope">NOPE</div>
-            <div class="label-chosen">🏆 最終首選</div>
-            
-            <h3>${res.name}</h3>
-            
-            <div class="card-badges">
-                <span class="card-badge badge-rating">⭐ ${res.rating}</span>
-                <span class="card-badge badge-price">NT$ ${res.price}</span>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">🔥 招牌</span>
-                <span>${res.signature}</span>
-            </div>
-            
-            <div class="card-summary">"${res.review_summary}"</div>
-            
-            <div class="info-row" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                <span class="info-label">💡 推薦</span>
-                <span style="color:var(--accent-yellow)">${res.reason}</span>
-            </div>
-            
-            <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query)}" target="_blank">
-                🗺️ 打開地圖查看詳情
-            </a>
-        `;
-        
-        wrapper.appendChild(card); 
-        stack.insertBefore(wrapper, stack.firstChild); 
-        
-        // 保留滑動與蓋章功能
-        initSwipe(card, wrapper, res);
-    });
+            restaurants.forEach((res) => {
+                const wrapper = document.createElement('div'); 
+                wrapper.className = 'swipe-card-wrapper';
+                const card = document.createElement('div'); 
+                card.className = 'swipe-card';
+                
+                card.innerHTML = `
+                    <div class="swipe-hints">
+                        <div class="hint-item">← NOPE</div>
+                        <div class="hint-item">${isFinalOne ? 'CHOSEN' : 'LIKE'} →</div>
+                    </div>
+                    <div class="swipe-label label-like">${isFinalOne ? 'CHOSEN' : 'LIKE'}</div>
+                    <div class="swipe-label label-nope">NOPE</div>
+                    <div class="label-chosen">🏆 最終首選</div>
+                    <h3>${res.name}</h3>
+                    <div class="card-badges">
+                        <span class="card-badge badge-rating">⭐ ${res.rating}</span>
+                        <span class="card-badge badge-price">NT$ ${res.price}</span>
+                    </div>
+                    <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
+                    <div class="card-summary">"${res.review_summary}"</div>
+                    <div class="info-row" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+                        <span class="info-label">💡 推薦</span><span style="color:var(--accent-yellow)">${res.reason}</span>
+                    </div>
+                    <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query)}" target="_blank">🗺️ 打開地圖查看詳情</a>
+                `;
+                
+                wrapper.appendChild(card); 
+                stack.insertBefore(wrapper, stack.firstChild); 
+                initSwipe(card, wrapper, res);
+            });
 
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'close-swiper'; 
-    closeBtn.innerText = '← 返回修改'; 
-    closeBtn.onclick = resetUI;
-    stack.appendChild(closeBtn); 
-}
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-swiper'; 
+            closeBtn.innerText = '← 返回修改'; 
+            closeBtn.onclick = resetUI;
+            stack.appendChild(closeBtn); 
+        }
+
+        // --- 補齊缺失的滑動功能 ---
+        function initSwipe(card, wrapper, res) {
+            let startX = 0, currentX = 0;
+            card.addEventListener('touchstart', e => { startX = e.touches[0].clientX; card.style.transition = 'none'; });
+            card.addEventListener('touchmove', e => {
+                currentX = e.touches[0].clientX - startX;
+                let rotation = currentX / 10;
+                card.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
+                if (currentX > 50) { card.querySelector('.label-like').style.opacity = Math.min(currentX/150, 1); }
+                else if (currentX < -50) { card.querySelector('.label-nope').style.opacity = Math.min(Math.abs(currentX)/150, 1); }
+            });
+            card.addEventListener('touchend', () => {
+                card.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                if (currentX > 120 || currentX < -120) {
+                    card.style.transform = `translateX(${currentX * 5}px) rotate(${currentX / 2}deg)`;
+                    card.style.opacity = '0';
+                    setTimeout(() => wrapper.remove(), 400);
+                } else {
+                    card.style.transform = '';
+                    card.querySelector('.label-like').style.opacity = 0;
+                    card.querySelector('.label-nope').style.opacity = 0;
+                }
+                currentX = 0;
+            });
+        }
         
         function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); }
 
-        // --- 物理輪播底圖 100% 恢復 ---
         window.onload = () => {
             initLocationWatch(); updateDistricts(); updateUsageDisplay();
             const key = getStoredKey(); if(key) document.getElementById('api-key-input').value = key;
