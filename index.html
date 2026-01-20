@@ -140,7 +140,7 @@
                     <optgroup label="東部與離島"><option value="Hualien">花蓮縣</option><option value="Taitung">台東縣</option><option value="Penghu">澎湖縣</option><option value="Kinmen">金門縣</option><option value="Lienchiang">連江縣</option></optgroup>
                 </select></div></div>
                 <div class="form-group nearby-toggle"><label>🏙️ 行政區</label><div class="input-box"><select id="district" onchange="checkTransAvailability();"><option>全區</option></select></div></div>
-                <div class="form-group full-width nearby-toggle"><label>🚆 交通偏好</label><div class="input-box"><select id="transport" onchange="checkTransAvailability()">
+                <div class="form-group full-width nearby-toggle"><label id="transport-main-label">🚆 交通偏好</label><div class="input-box"><select id="transport" onchange="checkTransAvailability()">
                     <option value="none" selected>🤷‍♂️ 不拘</option>
                     <option value="mrt">🚇 鄰近捷運站 (步行可達)</option>
                     <option value="hsr">🚄 鄰近高鐵站 (步行可達)</option>
@@ -344,6 +344,7 @@ const airportMap = {
         function initLocationWatch() { if ("geolocation" in navigator) { navigator.geolocation.watchPosition((pos) => { userCoords.lat = pos.coords.latitude; userCoords.lng = pos.coords.longitude; if (!isNearbyMode) document.getElementById('coords-text').innerText = `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)`; }, () => {}, { enableHighAccuracy: true }); } }
         function toggleNearbyMode() { isNearbyMode = !isNearbyMode; const btn = document.getElementById('location-display'); const fields = document.querySelectorAll('.nearby-toggle'); if (isNearbyMode) { btn.classList.add('active-mode'); fields.forEach(f => f.classList.add('hide-field')); document.getElementById('mrt-section').style.display = 'none'; document.getElementById('coords-text').innerText = "🎯 搜尋附近 1公里 內美食"; } else { btn.classList.remove('active-mode'); fields.forEach(f => f.classList.remove('hide-field')); checkTransAvailability(); document.getElementById('coords-text').innerText = userCoords.lat ? `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)` : "正在取得 GPS 座標..."; } }
         function updateDistricts() { const city = document.getElementById('city').value; document.getElementById('district').innerHTML = cityData[city].map(d => `<option value="${d}">${d}</option>`).join(''); }
+        // --- 修正：交通站點判斷與圖示動態切換 ---
         function checkTransAvailability() {
             const city = document.getElementById('city').value;
             const transport = document.getElementById('transport').value;
@@ -351,8 +352,15 @@ const airportMap = {
             const mrtSec = document.getElementById('mrt-section');
             const mrtSel = document.getElementById('mrt-station');
             const label = document.getElementById('trans-label');
+            const mainLabel = document.getElementById('transport-main-label');
+
+            // 1. 動態更換「交通偏好」前方的圖示
+            const iconMap = { none: '🚆', mrt: '🚇', hsr: '🚄', train: '🚂', airport: '✈️' };
+            mainLabel.innerText = `${iconMap[transport]} 交通偏好`;
+
             if (transport === 'none' || isNearbyMode) { mrtSec.style.display = 'none'; return; }
             mrtSec.style.display = 'block';
+
             if (transport === 'mrt') {
                 label.innerText = "🚇 指定捷運站 (依線路分類)";
                 let linesData = (city === 'Taipei' ? mrtLinesTaipei : (city === 'NewTaipei' ? mrtLinesNewTaipei : (city === 'Taoyuan' ? mrtLinesTaoyuan : (city === 'Taichung' ? mrtLinesTaichung : (city === 'Kaohsiung' ? mrtLinesKaohsiung : null)))));
@@ -372,6 +380,100 @@ const airportMap = {
                     mrtSel.innerHTML = '<option value="">--- 請選擇 ---</option>' + list.map(s => `<option value="${s}">${s}${s.includes('機場')?'':'站'}</option>`).join('');
                 } else { mrtSel.innerHTML = '<option value="">該區暫無站點</option>'; }
             }
+        }
+
+        // --- 修正：卡片渲染 (LIKE 標籤統一，不論是否為最後一張) ---
+        function renderCards(restaurants) {
+            document.getElementById('main-ui').classList.add('blur-mode');
+            const stack = document.getElementById('card-stack'); 
+            stack.innerHTML = ''; 
+            document.getElementById('swiper-overlay').style.display = 'flex';
+            
+            isFinalOne = (restaurants.length === 1);
+
+            restaurants.forEach((res) => {
+                const wrapper = document.createElement('div'); 
+                wrapper.className = 'swipe-card-wrapper';
+                const card = document.createElement('div'); 
+                card.className = 'swipe-card';
+                
+                card.innerHTML = `
+                    <div class="swipe-hints">
+                        <div class="hint-item">← NOPE</div>
+                        <div class="hint-item">LIKE →</div>
+                    </div>
+                    <div class="swipe-label label-like">LIKE</div>
+                    <div class="swipe-label label-nope">NOPE</div>
+                    <div class="label-chosen">🏆 最終首選</div>
+                    <h3>${res.name}</h3>
+                    <div class="card-badges">
+                        <span class="card-badge badge-rating">⭐ ${res.rating}</span>
+                        <span class="card-badge badge-price">NT$ ${res.price}</span>
+                    </div>
+                    <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
+                    <div class="card-summary">"${res.review_summary}"</div>
+                    <div class="info-row" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+                        <span class="info-label">💡 推薦</span><span style="color:var(--accent-yellow)">${res.reason}</span>
+                    </div>
+                    <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query)}" target="_blank">🗺️ 打開地圖查看詳情</a>
+                `;
+                
+                wrapper.appendChild(card); 
+                stack.insertBefore(wrapper, stack.firstChild); 
+                initSwipe(card, wrapper, res);
+            });
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'close-swiper'; 
+            closeBtn.innerText = '← 返回修改'; 
+            closeBtn.onclick = resetUI;
+            stack.appendChild(closeBtn); 
+        }
+
+        // --- 修正：結束檢查 (顯示系統內訊息與確認鈕，隱藏返回鈕) ---
+        function checkStackEnd(wrapper) {
+            setTimeout(() => {
+                wrapper.remove();
+                const remaining = document.querySelectorAll('.swipe-card-wrapper');
+                if (remaining.length === 0) {
+                    if (keptRestaurants.length === 0) {
+                        const closeBtn = document.querySelector('.close-swiper');
+                        if (closeBtn) closeBtn.style.display = 'none';
+
+                        const stack = document.getElementById('card-stack');
+                        stack.innerHTML = `
+                            <div style="background: rgba(30,30,30,0.9); border: 1px solid var(--glass-border); padding: 30px; border-radius: 24px; text-align: center; margin-top: 100px; width: 85%; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                                <div style="color:white; font-size: 1.2rem; line-height: 1.8; margin-bottom: 25px;">
+                                    <span>沒有喜歡的店家？</span><br>
+                                    <span style="color:var(--primary-orange); font-weight:bold;">再試著探索一次吧！</span>
+                                </div>
+                                <button onclick="resetUI()" style="background: var(--primary-orange); color: white; border: none; padding: 12px 40px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; width: 100%;">我知道了</button>
+                            </div>
+                        `;
+                    } else {
+                        const nextRoundData = [...keptRestaurants];
+                        keptRestaurants = []; 
+                        renderCards(nextRoundData);
+                    }
+                }
+            }, 400);
+        }
+
+        // --- 修正：搜尋精確度 (100% 官方名與 800m 距離強控) ---
+        async function getAiRecommendation(cfg) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
+            const prompt = `你現在是精準地理美食檢索員。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。要求：1. 官方店名：name 必須是 Google 地圖官方正式名稱。2. 距離：必須在步行 10 分鐘內。3. 僅輸出 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。`;
+
+            try {
+                const response = await fetch(url, { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json", temperature: 0.2 } }) 
+                });
+                const result = await response.json();
+                if (result.error) return { error: `API 失敗: ${result.error.message}` };
+                return { data: JSON.parse(result.candidates[0].content.parts[0].text) };
+            } catch (e) { return { error: "資料不穩定，請重試。" }; }
         }
 
         // --- API 配額 (每日重置) ---
