@@ -523,13 +523,13 @@ const airportMap = {
                     <div class="label-chosen">🏆 最終首選</div>
                     <h3>${res.name}</h3>
                     <div class="card-badges">
-                        <span class="card-badge badge-rating">⭐ ${res.rating}</span>
-                        <span class="card-badge badge-price">NT$ ${res.price}</span>
+                        <span class="card-badge badge-rating">⭐ googl評分 ${res.rating}</span>
+                        <span class="card-badge badge-price">💰 價位 NT$ ${res.price}</span>
                     </div>
-                    <div class="info-row"><span class="info-label">🔥 招牌</span><span>${res.signature}</span></div>
+                    <div class="info-row"><span class="info-label">🔥 必點招牌</span><span>${res.signature}</span></div>
                     <div class="card-summary">"${res.review_summary}"</div>
                     <div class="info-row" style="margin-top:5px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-                        <span class="info-label">💡 推薦</span><span style="color:var(--accent-yellow)">${res.reason}</span>
+                        <span class="info-label">💡 推薦原因</span><span style="color:var(--accent-yellow)">${res.reason}</span>
                     </div>
                     <a class="card-map-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(res.map_query)}" target="_blank">🗺️ 打開地圖查看詳情</a>
                 `;
