@@ -419,7 +419,7 @@ const airportMap = {
             };
 
             if (isNearbyMode) {
-                config.locationLimit = `GPS座標 (${userCoords.lat}, ${userCoords.lng}) 半徑 1 公里內`;
+                config.locationLimit = `GPS座標 (${userCoords.lat}, ${userCoords.lng}) 半徑 0.5公里內`;
             } else if (config.transport !== 'none' && config.station) {
                 config.locationLimit = `${config.city}${config.station} 站步行 800 公尺內`;
             } else {
@@ -447,18 +447,16 @@ const airportMap = {
         async function getAiRecommendation(cfg) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            // 強化地理約束：加入「嚴格半徑」與「步行極限」指令
+            // 強控指令：1.官方名稱 2.由近到遠 3.嚴格地理限制
             const prompt = `你現在是精準地理美食檢索員。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
-            【地理邊界嚴格指令】：
-            1. 物理距離限制：所有店家必須位於指定中心點（${cfg.locationLimit}）的實際半徑範圍內。如果是車站或座標，步行距離嚴禁超過 10 分鐘（約 800 公尺）。
-            2. 鄰近優先：若符合條件的店很多，請「由近到遠」排序，並只挑選最靠近中心點的 6 家店。
-            3. 正式店名：name 必須是 Google 地圖上的【官方正式名稱】，嚴禁幻覺。
+            【嚴格指令】：
+            1. 官方店名：name 必須是 Google 地圖上的【官方正式名稱】。嚴禁自擬標題、嚴禁使用描述性文字（如：xx必吃、xx推薦）。
+            2. 地理約束：店家必須位於（${cfg.locationLimit}）實際半徑範圍內。步行距離嚴禁超過 10 分鐘（約 800 公尺）。
+            3. 排序規則：請「由近到遠」挑選最靠近中心點的 6 家真實店家。
             4. 價格格式：數字~數字。
-            5. 地圖連結：map_query 必須包含「行政區 + 官方店名」，確保定位不偏移。
+            5. 地圖查詢：map_query 必須為「行政區 + 官方店名」，確保定位不偏移。
             
-            【輸出規範】：
-            僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。
-            嚴格禁止 Markdown 標籤與解釋文字。`;
+            【輸出規範】：僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。嚴禁解釋文字。`;
 
             try {
                 const response = await fetch(url, { 
@@ -468,7 +466,7 @@ const airportMap = {
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: { 
                             response_mime_type: "application/json",
-                            temperature: 0.2 // 進一步調低溫度，強制 AI 遵守地理限制，不准隨意發揮
+                            temperature: 0.2 // 調低溫度以確保極高的精確度
                         }
                     }) 
                 });
@@ -576,10 +574,12 @@ const airportMap = {
                 const remaining = document.querySelectorAll('.swipe-card-wrapper');
                 if (remaining.length === 0) {
                     if (keptRestaurants.length === 0) {
-                        // 1. 先關閉遮罩介面，這樣「返回修改」按鈕就會跟著遮罩一起消失
-                        resetUI();
-                        // 2. 介面清空後，再跳出您要求保留的訊息
-                        alert("沒有喜歡的店家？再試著探索一次吧！");
+                        // 1. 強制關閉整個遮罩介面（這會帶走返回修改按鈕）
+                        resetUI(); 
+                        // 2. 延遲 100ms 確保 UI 渲染完成後再跳出訊息
+                        setTimeout(() => {
+                            alert("沒有喜歡的店家？再試著探索一次吧！");
+                        }, 100);
                     } else {
                         // 帶著喜歡的店家進入下一輪
                         const nextRoundData = [...keptRestaurants];
