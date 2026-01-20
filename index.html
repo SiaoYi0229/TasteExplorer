@@ -481,6 +481,7 @@ const airportMap = {
                 return { error: "資料傳輸不穩定，請再點擊一次探索。" }; 
             }
         }
+        // --- 修正後的卡片渲染：右上角標籤固定為 LIKE ---
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
             const stack = document.getElementById('card-stack'); 
@@ -498,9 +499,9 @@ const airportMap = {
                 card.innerHTML = `
                     <div class="swipe-hints">
                         <div class="hint-item">← NOPE</div>
-                        <div class="hint-item">${isFinalOne ? 'CHOSEN' : 'LIKE'} →</div>
+                        <div class="hint-item">LIKE →</div>
                     </div>
-                    <div class="swipe-label label-like">${isFinalOne ? 'CHOSEN' : 'LIKE'}</div>
+                    <div class="swipe-label label-like">LIKE</div>
                     <div class="swipe-label label-nope">NOPE</div>
                     <div class="label-chosen">🏆 最終首選</div>
                     <h3>${res.name}</h3>
@@ -521,7 +522,6 @@ const airportMap = {
                 initSwipe(card, wrapper, res);
             });
 
-            // 保持返回按鈕，但會在 checkStackEnd 中隨 UI 一起關閉
             const closeBtn = document.createElement('button');
             closeBtn.className = 'close-swiper'; 
             closeBtn.innerText = '← 返回修改'; 
@@ -568,6 +568,7 @@ const airportMap = {
             });
         }
 
+        // --- 結束檢查邏輯：確保 UI 先隱藏，按鈕不殘留，再跳 Alert ---
         function checkStackEnd(wrapper) {
             setTimeout(() => {
                 wrapper.remove();
@@ -589,7 +590,6 @@ const airportMap = {
                 }
             }, 400);
         }
-        
         function resetUI() { document.getElementById('swiper-overlay').style.display = 'none'; document.getElementById('main-ui').classList.remove('blur-mode'); keptRestaurants = []; }
 
         window.onload = () => {
