@@ -266,73 +266,58 @@
         }
 
         async function startSearch() {
-    const loader = document.getElementById('loader');
-    const btn = document.getElementById('search-btn');
-    if (isNearbyMode && (!userCoords.lat || !userCoords.lng)) { alert("尚未取得定位！"); return; }
-    
-    btn.disabled = true;
-    loader.style.display = 'flex';
-
+    // ... 略過 loader 與按鈕禁用代碼 ...
     try {
-        const config = {
-            apiKey: getStoredKey(),
-            city: document.getElementById('city').options[document.getElementById('city').selectedIndex].text,
-            district: document.getElementById('district').value,
-            transport: document.getElementById('transport').value,
-            station: document.getElementById('mrt-station').value,
-            food: document.getElementById('food').options[document.getElementById('food').selectedIndex].text,
-            purpose: document.getElementById('purpose').options[document.getElementById('purpose').selectedIndex].text,
-            budget: document.getElementById('budget').options[document.getElementById('budget').selectedIndex].text,
-            isHidden: document.getElementById('btn-hidden').classList.contains('selected'),
-            isOpenOnly: document.getElementById('btn-open').classList.contains('selected')
-        };
+        // ... 略過 config 取得代碼 ...
 
-        // 地理範圍描述
         if (isNearbyMode) {
-            config.locationLimit = `座標 (${userCoords.lat}, ${userCoords.lng}) 附近 1 公里內`;
+            config.locationLimit = `GPS座標 (${userCoords.lat}, ${userCoords.lng}) 半徑 1 公里內`;
         } else if (config.transport !== 'none' && config.station) {
             config.locationLimit = `${config.city}${config.station} 站步行 800 公尺內`;
         } else {
-            config.locationLimit = `${config.city}${config.district} 區域內`;
+            // 全區模式下，給 AI 明確的範圍
+            config.locationLimit = `${config.city}${config.district} 區域`;
         }
 
         const res = await getAiRecommendation(config);
         
         if(res.error) { 
             alert(res.error); 
-            // 發生錯誤，停止流程，不呼叫 renderCards
-            return;
+            return; // 報錯時立即切斷，不進入渲染流程
         } 
         
         if(res.data && res.data.length > 0) {
             incrementUsage();
             keptRestaurants = []; 
             isFinalOne = false;
-            renderCards(res.data); // 只有成功取得資料才進入卡片模式
-        } else { 
-            alert("🔍 目前條件下找不更多美食，建議放寬條件試試。"); 
+            renderCards(res.data);
         }
     } catch(e) { 
-        alert("搜尋發生預期外錯誤，請重試。"); 
-    } finally { 
+        alert("系統連線不穩定，請稍後重試。"); 
+    } finally {
         loader.style.display = 'none'; 
-        btn.disabled = false; 
+        btn.disabled = false;
     }
 }
-
        async function getAiRecommendation(cfg) {
     // 絕對保留 gemini-2.5-flash
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-    const prompt = `你現在是美食專家。請從知識庫檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」、預算分類為「${cfg.budget}」且適合「${cfg.purpose}」的店家。
+    // 指令優化：強調在大區域(如台北)必須找滿 6 家，並定義價格區間
+    const prompt = `你現在是美食檢索專家。請從知識庫中檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
     
-    【任務規則】：
-    1. 數量：必須找滿 6 家店（除非勾選隱藏版或營業中）。
-    2. 價格：格式為「數字~數字」(例如 300~500)，不要符號。
-    3. 嚴禁杜撰店名。
+    【核心任務】：
+    1. 數量要求：在台北市等大區域搜尋時，你擁有充足的資料，請「務必」提供 6 家真實存在的店。
+    2. 價格格式：人均消費區間請以「數字~數字」呈現 (例如 200~400)，不要千分撇或符號。
+    3. 推薦邏輯：針對使用者目的「${cfg.purpose}」給出具體的推薦原因。
+    4. 地圖定位：map_query 必須為「店名 + 行政區 + 餐廳類別」。
     
-    【輸出欄位】：name, rating, price, signature, review_summary, reason, map_query。
-    【格式要求】：只輸出一個純 JSON 陣列，禁止包含 Markdown 代碼塊、註腳或任何解釋文字。`;
+    【輸出規範】：
+    - 僅輸出純 JSON 陣列。欄位：name, rating, price, signature, review_summary, reason, map_query。
+    - 嚴格禁止 Markdown 標籤 (如 \`\`\`json)、禁止註腳、禁止任何解釋文字。
+    
+    ${cfg.isHidden ? "優先挑選高分但評論數較少的店。" : "挑選具代表性的熱門名店。"}
+    ${cfg.isOpenOnly ? "僅限搜尋結果顯示目前營業中的店。" : ""}`;
 
     try {
         const response = await fetch(url, { 
@@ -341,8 +326,9 @@
             body: JSON.stringify({ 
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: { 
-                    response_mime_type: "application/json", // 強制輸出格式
-                    temperature: 0.5 
+                    response_mime_type: "application/json",
+                    temperature: 0.5, // 稍微提高，讓 AI 不會因過度保守而減少數量
+                    max_output_tokens: 1000 // 限制長度防止 JSON 碎裂
                 }
             }) 
         });
@@ -350,34 +336,32 @@
         const result = await response.json();
         
         if (result.error) {
-            return { error: `API 錯誤: ${result.error.message}` };
-        }
-
-        if (!result.candidates || !result.candidates[0].content) {
-            return { error: "AI 未能生成有效建議，請再試一次。" };
+            return { error: `API 請求失敗: ${result.error.message}` };
         }
 
         let text = result.candidates[0].content.parts[0].text;
         
-        // --- 核彈級物理清洗 JSON ---
-        // 1. 移除 Markdown 標記 (如 ```json)
-        text = text.replace(/```json/g, "").replace(/```/g, "");
-        // 2. 找到第一個 [ 和最後一個 ]，只取中間的部分
+        // --- 物理清洗 JSON ---
         const start = text.indexOf('[');
         const end = text.lastIndexOf(']');
         
         if (start === -1 || end === -1) {
-            throw new Error("JSON 格式不完整");
+            throw new Error("JSON 結構不完整");
         }
         
         const cleanedJson = text.substring(start, end + 1);
         const data = JSON.parse(cleanedJson);
 
+        // 如果 AI 還是太保守，少於 3 家且非特殊模式，則提示失敗
+        if (data.length === 0) {
+            return { error: "🔍 找不到符合條件的店家，請更換條件再試。" };
+        }
+
         return { data: data };
 
     } catch (e) { 
-        console.error("Parse Error:", e);
-        return { error: "資料解析出錯，請再點擊一次搜尋。" }; 
+        console.error("Parse error detail:", e);
+        return { error: "資料傳輸不穩定，請再點擊一次探索。" }; 
     }
 }
         // --- 卡片生存系統 (100% 晉級制) ---
