@@ -85,15 +85,28 @@
         .label-chosen.active { opacity: 1; transform: scale(1) rotate(-15deg); }
 
         /* 蓋章後的物理鎖死狀態 */
-        .swipe-card.stamped { transform: scale(1) !important; pointer-events: none; box-shadow: 0 0 30px rgba(46, 204, 113, 0.4); }
-
-        .card-badge { padding: 3px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
+        .swipe-card { 
+            width: 100%; 
+            background: var(--glass-bg); 
+            border-radius: 24px; 
+            border: 1px solid var(--glass-border); 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            overflow-y: auto; /* 允許上下滑動 */
+            max-height: 75vh; /* 限制最大高度防止撐爆 */
+            scrollbar-width: none; /* Firefox 隱藏滾動條 */
+            -ms-overflow-style: none; /* IE/Edge 隱藏滾動條 */
+        }
+        .swipe-card::-webkit-scrollbar { display: none; /* Chrome/Safari 隱藏滾動條 */ }
+        .card-badges { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; margin-bottom: 15px; }
         .badge-rating { background: var(--accent-yellow); color: #000; }
         .badge-price { background: rgba(255,255,255,0.1); color: #eee; }
         .badge-distance { background: var(--primary-orange); color: #fff; }
 
-        .info-row { font-size: 0.85rem; display: flex; flex-direction: column; gap: 2px; color: #ddd; line-height: 1.4; margin-bottom: 10px; }
-        .info-label { color: var(--primary-orange); font-weight: bold; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-row { font-size: 0.85rem; display: flex; flex-direction: column; gap: 2px; color: #ddd; line-height: 1.4; margin-bottom: 12px; }
+        .info-label { color: var(--primary-orange); font-weight: bold; font-size: 0.72rem; opacity: 0.9; text-transform: uppercase; }
         .card-summary { font-size: 0.88rem; font-style: italic; opacity: 0.85; border-left: 2px solid var(--primary-orange); padding-left: 10px; margin: 5px 0; }
         .card-map-btn { background: var(--primary-orange); color: #fff; text-decoration: none; padding: 12px; border-radius: 14px; text-align: center; font-weight: bold; margin-top: 10px; }
         
@@ -464,21 +477,20 @@ const airportMap = {
         async function getAiRecommendation(cfg) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-            // --- 強化 Prompt：加入隱藏版與營業中邏輯 ---
             const prompt = `你現在是美食數據專家。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
             【數據正確性要求】：
-            1. 官方店名：name 必須與 Google Maps 標題 100% 一致。禁止自行增刪「(xx店)」等分店識別字，嚴禁加工。
+            1. 官方店名：name 必須與 Google Maps 標題 100% 一致。禁止自行增刪分店識別字。
             2. 數量要求：找齊 6 家真實存在的店。
-            3. 地理邊界：店家必須在 ${cfg.locationLimit} 實際物理 1 公里內，嚴禁 2公里外的錯誤偏移。
-            4. 營業時間 (opening_hours)：提供真實營業時段摘要。
-            5. 真實評論摘要 (review_summary)：擷取 Google Maps 真實顧客最常提到的正負評精華。
-            6. 核心強項 (reason)：描述該店真正的競爭力（如：職人手藝、隱藏菜單）。
+            3. 地理邊界：店家必須在 ${cfg.locationLimit} 實際物理 1 公里內，嚴禁 2 公里外的偏移。
+            4. 評分數據：請提供真實評分(rating)與【評論總數(review_count)】。
+            5. 營業時間 (opening_hours)：提供真實營業時段。
+            6. 真實評論摘要 (review_summary)：擷取 Google Maps 真實顧客的反饋。
             
             【過濾條件】：
-            ${cfg.isHidden ? "- 🤫 隱藏版模式：優先挑選【高分但評論數較少】、或是位於巷弄內的在地私房名單。" : "- 挑選具代表性的熱門名店。"}
-            ${cfg.isOpenOnly ? "- 🕒 營業中模式：僅限回傳目前顯示為營業中的店家。" : ""}
+            ${cfg.isHidden ? "- 優先挑選高分但評論數較少、或是巷弄內的私房名單。" : "- 挑選熱門名店。"}
+            ${cfg.isOpenOnly ? "- 僅限目前營業中的店家。" : ""}
             
-            【輸出規範】：僅輸出純 JSON 陣列。欄位：name, rating, price, signature, opening_hours, review_summary, reason, map_query。不要解釋文字。`;
+            【輸出規範】：僅輸出純 JSON 陣列。欄位：name, rating, review_count, price, signature, opening_hours, review_summary, reason, map_query。不要解釋文字。`;
 
             try {
                 const response = await fetch(url, { 
@@ -486,22 +498,13 @@ const airportMap = {
                     headers: { "Content-Type": "application/json" }, 
                     body: JSON.stringify({ 
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { 
-                            response_mime_type: "application/json",
-                            temperature: 0.2 // 低溫確保數據準確，店名不亂改
-                        }
+                        generationConfig: { response_mime_type: "application/json", temperature: 0.2 }
                     }) 
                 });
-
                 const result = await response.json();
                 if (result.error) return { error: `API 請求失敗: ${result.error.message}` };
-                
-                const text = result.candidates[0].content.parts[0].text;
-                const data = JSON.parse(text);
-                return { data: data };
-            } catch (e) { 
-                return { error: "資料傳輸不穩定，請再點擊一次探索。" }; 
-            }
+                return { data: JSON.parse(result.candidates[0].content.parts[0].text) };
+            } catch (e) { return { error: "資料不穩定，請再試一次。" }; }
         }
         // --- 修正後的卡片渲染：右上角標籤固定為 LIKE ---
         function renderCards(restaurants) {
@@ -528,7 +531,7 @@ const airportMap = {
                     <div class="label-chosen">🏆 最終首選</div>
                     <h3>${res.name}</h3>
                     <div class="card-badges">
-                        <span class="card-badge badge-rating">⭐ googl評分 ${res.rating}</span>
+                        <span class="card-badge badge-rating">⭐ googl評分 ${res.rating} <small>(${res.review_count} 則評論)</small></span>
                         <span class="card-badge badge-price">💰 價位 NT$ ${res.price}</span>
                     </div>
                     <div class="info-row"><span class="info-label">🔥 必點招牌</span><span>${res.signature}</span></div>
