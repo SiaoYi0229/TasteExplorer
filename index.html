@@ -7,17 +7,7 @@
     <link rel="icon" href="favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="favicon.png">
     <style>
-        /* --- 1. 核心樣式：物理刪除拉霸與還原 UI --- */
-        :root {
-            --primary-orange: #FF6600;
-            --glass-bg: rgba(25, 25, 25, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.15);
-            --input-bg: rgba(255, 255, 255, 0.1);
-            --text-color: #ffffff;
-            --label-color: #cccccc;
-            --accent-yellow: #FFCC00;
-        }
-
+        :root {--primary-orange: #FF6600;--glass-bg: rgba(25, 25, 25, 0.85);--glass-border: rgba(255, 255, 255, 0.15);--input-bg: rgba(255, 255, 255, 0.1);--text-color: #ffffff;--label-color: #cccccc;--accent-yellow: #FFCC00;}
         html, body { overscroll-behavior-y: none; height: 100%; overflow: hidden; position: fixed; width: 100%; margin: 0; padding: 0; background-color: #000; }
         html { font-size: 14px; } 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif; }
@@ -155,7 +145,6 @@
     </div>
 
 <script>
-        // --- 核心數據 (底圖 100% 恢復) ---
         const DAILY_LIMIT = 15;
         let userCoords = { lat: null, lng: null };
         let isNearbyMode = false;
@@ -173,8 +162,7 @@ const mrtLinesTaipei = {
             '松山新店線 (G)': ['萬隆', '公館', '台電大樓', '古亭', '中正紀念堂', '小南門', '西門', '北門', '中山', '松江南京', '南京復興', '台北小巨蛋', '南京三民', '松山'],
             '中和新蘆線 (O)': ['古亭', '東門', '忠孝新生', '松江南京', '行天宮', '中山國小', '民權西路', '大橋頭'],
             '文湖線 (BR)': ['動物園', '木柵', '萬芳社區', '萬芳醫院', '辛亥', '麟光', '六張犁', '科技大樓', '大安', '忠孝復興', '南京復興', '中山國中', '松山機場', '大直', '劍南路', '西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖', '南港軟體園區', '南港展覽館'],
-            '機場捷運 (A)': ['台北車站']
-        };
+            '機場捷運 (A)': ['台北車站']};
 
         const mrtLinesNewTaipei = {
             '板南線 (BL)': ['頂埔', '永寧', '土城', '海山', '亞東醫院', '府中', '板橋', '新埔', '江子翠'],
@@ -184,22 +172,18 @@ const mrtLinesTaipei = {
             '環狀線 (Y)': ['大坪林', '十四張', '秀朗橋', '景平', '景安', '中和', '橋和', '中原', '板新', '板橋', '新埔民生', '頭前庄', '幸福', '新北產業園區'],
             '淡海輕軌 (V)': ['紅樹林', '竿蓁林', '淡金鄧公', '淡江大學', '淡金北新', '新市一路', '淡水行政中心', '濱海義山', '濱海沙崙', '淡海新市鎮', '崁頂', '台北海洋大學', '沙崙', '漁人碼頭'],
             '安坑輕軌 (K)': ['雙城', '玫瑰中國城', '台北小城', '耕莘安康分院', '安康', '景文科大', '陽光運動公園', '新和國小', '十四張'],
-            '機場捷運 (A)': ['三重', '新北產業園區', '新莊副都心', '泰山', '泰山貴和', '體育大學', '林口']
-        };
+            '機場捷運 (A)': ['三重', '新北產業園區', '新莊副都心', '泰山', '泰山貴和', '體育大學', '林口']};
 
         const mrtLinesTaoyuan = {
-            '機場捷運 (A)': ['體育大學', '長庚醫院', '林口', '山鼻', '坑口', '機場第一航廈', '機場第二航廈', '機場旅館', '大園', '橫山', '領航', '高體桃園站', '桃園體育園區', '興南', '環北', '老街溪']
-        };
+            '機場捷運 (A)': ['體育大學', '長庚醫院', '林口', '山鼻', '坑口', '機場第一航廈', '機場第二航廈', '機場旅館', '大園', '橫山', '領航', '高體桃園站', '桃園體育園區', '興南', '環北', '老街溪']};
 
         const mrtLinesTaichung = {
-            '綠線': ['北屯總站', '舊社', '松竹', '四維國小', '文心崇德', '文心中清', '文華高中', '文心櫻花', '市政府', '水安宮', '文心森林公園', '南屯', '豐樂公園', '大慶', '九張犁', '九德', '烏日', '高鐵台中站']
-        };
+            '綠線': ['北屯總站', '舊社', '松竹', '四維國小', '文心崇德', '文心中清', '文華高中', '文心櫻花', '市政府', '水安宮', '文心森林公園', '南屯', '豐樂公園', '大慶', '九張犁', '九德', '烏日', '高鐵台中站']};
 
         const mrtLinesKaohsiung = {
             '紅線 (R)': ['小港', '高雄國際機場', '草衙', '前鎮高中', '凱旋', '獅甲', '三多商圈', '中央公園', '美麗島', '高雄車站', '後驛', '凹子底', '巨蛋', '生態園區', '左營', '世運', '油廠國小', '楠梓加工區', '後勁', '都會公園', '橋頭車站', '橋頭火車站', '岡山樂購', '岡山車站'],
             '橘線 (O)': ['哈瑪星', '鹽埕埔', '市議會', '美麗島', '信義國小', '文化中心', '五塊厝', '技擊館', '衛武營', '鳳山西站', '鳳山', '大東', '鳳山國中', '大寮'],
-            '環狀輕軌 (C)': ['籬仔內', '凱旋瑞田', '前鎮之星', '凱旋中華', '夢時代', '經貿園區', '軟體園區', '高雄展覽館', '光榮碼頭', '真愛碼頭', '駁二大義', '駁二蓬萊', '哈瑪星', '壽山公園', '文武聖殿', '鼓山區公所', '鼓山', '馬卡道', '內惟藝術中心', '美術館', '聯合醫院', '龍華國小', '愛河之心', '新上國小', '灣仔內', '鼎山街', '高雄高工', '樹德家商', '科工館', '聖功醫院', '凱旋公園', '衛生局', '五權國小', '輕軌機廠']
-        };
+            '環狀輕軌 (C)': ['籬仔內', '凱旋瑞田', '前鎮之星', '凱旋中華', '夢時代', '經貿園區', '軟體園區', '高雄展覽館', '光榮碼頭', '真愛碼頭', '駁二大義', '駁二蓬萊', '哈瑪星', '壽山公園', '文武聖殿', '鼓山區公所', '鼓山', '馬卡道', '內惟藝術中心', '美術館', '聯合醫院', '龍華國小', '愛河之心', '新上國小', '灣仔內', '鼎山街', '高雄高工', '樹德家商', '科工館', '聖功醫院', '凱旋公園', '衛生局', '五權國小', '輕軌機廠']};
 
         const mrtMap = {
             'Taipei': {
@@ -214,8 +198,7 @@ const mrtLinesTaipei = {
                 '北投區': ['石牌', '唭哩岸', '奇岩', '北投', '新北投', '復興崗', '忠義', '關渡'],
                 '內湖區': ['西湖', '港墘', '文德', '內湖', '大湖公園', '葫洲', '東湖'],
                 '南港區': ['南港', '南港展覽館', '南港軟體園區', '昆陽'],
-                '文山區': ['動物園', '木柵', '萬芳醫院', '辛亥', '景美', '萬隆']
-            },
+                '文山區': ['動物園', '木柵', '萬芳醫院', '辛亥', '景美', '萬隆']},
             'NewTaipei': {
                 '板橋區': ['板橋', '府中', '新埔', '江子翠', '亞東醫院', '新埔民生', '板新'],
                 '三重區': ['三重', '菜寮', '台北橋', '三重國小', '三和國中', '徐匯中學', '先嗇宮'],
@@ -226,8 +209,7 @@ const mrtLinesTaipei = {
                 '土城區': ['海山', '土城', '永寧', '頂埔'],
                 '蘆洲區': ['蘆洲', '三民高中', '徐匯中學'],
                 '淡水區': ['淡水', '紅樹林', '竹圍', '竿蓁林', '淡金鄧公', '淡江大學', '淡水行政中心', '漁人碼頭', '淡海新市鎮'],
-                '林口區': ['林口'], '泰山區': ['泰山', '泰山貴和'], '五股區': ['新北產業園區']
-            }
+                '林口區': ['林口'], '泰山區': ['泰山', '泰山貴和'], '五股區': ['新北產業園區']}
         };
 
         const trainMap = {
@@ -241,8 +223,7 @@ const mrtLinesTaipei = {
                 '瑞芳區': ['瑞芳', '猴硐', '三貂嶺', '四腳亭'],
                 '雙溪區': ['雙溪', '牡丹'],
                 '貢寮區': ['貢寮', '福隆'],
-                '平溪區': ['平溪', '菁桐', '十分', '嶺腳', '望古', '大華']
-            },
+                '平溪區': ['平溪', '菁桐', '十分', '嶺腳', '望古', '大華']},
             'Taoyuan': { '桃園區': ['桃園'], '中壢區': ['中壢', '內壢'], '楊梅區': ['楊梅', '埔心', '富岡', '新富'] },
             'HsinchuCity': { '東區': ['新竹', '北新竹', '千甲', '新莊'], '香山區': ['香山', '三姓橋'] },
             'HsinchuCounty': { '竹北市': ['竹北'], '竹東鎮': ['竹東', '榮華', '上員'], '湖口鄉': ['湖口', '新豐'] },
@@ -250,8 +231,7 @@ const mrtLinesTaipei = {
             'Taichung': {
                 '中區': ['台中'], '東區': ['精武'], '南區': ['五權', '大慶'], '北屯區': ['太原', '松竹'], 
                 '烏日區': ['烏日', '新烏日', '成功'], '豐原區': ['豐原'], '潭子區': ['潭子', '栗林'], 
-                '大肚區': ['大肚', '追分'], '清水區': ['清水'], '沙鹿區': ['沙鹿'], '后里區': ['后里', '泰安']
-            },
+                '大肚區': ['大肚', '追分'], '清水區': ['清水'], '沙鹿區': ['沙鹿'], '后里區': ['后里', '泰安']},
             'Changhua': { '彰化市': ['彰化'], '員林市': ['員林'], '田中鎮': ['田中'], '二水鄉': ['二水'], '花壇鄉': ['花壇'], '大村鄉': ['大村'] },
             'Yunlin': { '斗六市': ['斗六'], '斗南鎮': ['斗南'], '林內鄉': ['林內'] },
             'ChiayiCity': { '西區': ['嘉義'] },
@@ -259,8 +239,7 @@ const mrtLinesTaipei = {
             'Tainan': { '東區': ['台南'], '永康區': ['永康', '大橋'], '新營區': ['新營'], '善化區': ['善化'], '仁德區': ['保安', '仁德'], '歸仁區': ['沙崙'] },
             'Kaohsiung': {
                 '三民區': ['高雄'], '左營區': ['新左營'], '鳳山區': ['鳳山'], '岡山區': ['岡山'], 
-                '楠梓區': ['楠梓'], '橋頭區': ['橋頭'], '鼓山區': ['鼓山', '美術館', '內惟']
-            },
+                '楠梓區': ['楠梓'], '橋頭區': ['橋頭'], '鼓山區': ['鼓山', '美術館', '內惟']},
             'Pingtung': { '屏東市': ['屏東'], '潮州鎮': ['潮州'], '枋寮鄉': ['枋寮'] },
             'Yilan': { '宜蘭市': ['宜蘭'], '羅東鎮': ['羅東'], '礁溪鄉': ['礁溪'], '頭城鎮': ['頭城', '龜山'], '蘇澳鎮': ['蘇澳', '新馬'] },
             'Hualien': { '花蓮市': ['花蓮'], '玉里鎮': ['玉里'], '壽豐鄉': ['壽豐', '志學'], '新城鄉': ['新城'] },
@@ -306,7 +285,6 @@ const mrtLinesTaipei = {
         function initLocationWatch() { if ("geolocation" in navigator) { navigator.geolocation.watchPosition((pos) => { userCoords.lat = pos.coords.latitude; userCoords.lng = pos.coords.longitude; if (!isNearbyMode) document.getElementById('coords-text').innerText = `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)`; }, () => {}, { enableHighAccuracy: true }); } }
         function toggleNearbyMode() { isNearbyMode = !isNearbyMode; const btn = document.getElementById('location-display'); const fields = document.querySelectorAll('.nearby-toggle'); if (isNearbyMode) { btn.classList.add('active-mode'); fields.forEach(f => f.classList.add('hide-field')); document.getElementById('mrt-section').style.display = 'none'; document.getElementById('coords-text').innerText = "🎯 搜尋附近 1公里 內美食"; } else { btn.classList.remove('active-mode'); fields.forEach(f => f.classList.remove('hide-field')); checkTransAvailability(); document.getElementById('coords-text').innerText = userCoords.lat ? `📍 ${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)} (已同步)` : "正在取得 GPS 座標..."; } }
         function updateDistricts() { const city = document.getElementById('city').value; document.getElementById('district').innerHTML = cityData[city].map(d => `<option value="${d}">${d}</option>`).join(''); }
-        // --- 修正：交通圖示連動切換邏輯 ---
         function checkTransAvailability() {
             const city = document.getElementById('city').value;
             const transport = document.getElementById('transport').value;
@@ -314,20 +292,15 @@ const mrtLinesTaipei = {
             const mrtSec = document.getElementById('mrt-section');
             const mrtSel = document.getElementById('mrt-station');
             const label = document.getElementById('trans-label');
-            // 選取主標籤 (請確保您 HTML 標籤有 id="transport-main-label" 或使用此選擇器)
             const mainLabel = document.getElementById('transport-main-label') || document.querySelector('.nearby-toggle label[id="transport-main-label"]') || document.querySelector('label:contains("交通偏好")');
-
             const iconMap = { none: '🚆', mrt: '🚇', hsr: '🚄', train: '🚂', airport: '✈️' };
             const nameMap = { none: '交通偏好', mrt: '交通偏好', hsr: '交通偏好', train: '交通偏好', airport: '交通偏好' };
             
-            // 1. 更新主標籤圖示
             if (mainLabel) mainLabel.innerText = `${iconMap[transport]} ${nameMap[transport]}`;
-
             if (transport === 'none' || isNearbyMode) { mrtSec.style.display = 'none'; return; }
             mrtSec.style.display = 'block';
 
             if (transport === 'mrt') {
-                // 2. 更新指定站點標籤圖示 (捷運)
                 label.innerText = "🚇 指定捷運站 (依線路分類)";
                 let linesData = (city === 'Taipei' ? mrtLinesTaipei : (city === 'NewTaipei' ? mrtLinesNewTaipei : (city === 'Taoyuan' ? mrtLinesTaoyuan : (city === 'Taichung' ? mrtLinesTaichung : (city === 'Kaohsiung' ? mrtLinesKaohsiung : null)))));
                 if (district === '全區' && linesData) {
@@ -338,7 +311,6 @@ const mrtLinesTaipei = {
                     mrtSel.innerHTML = '<option value="">--- 請選擇 ---</option>' + mrtMap[city][district].map(s => `<option value="${s}">${s}站</option>`).join('');
                 } else { mrtSel.innerHTML = '<option value="">該區暫無捷運站</option>'; }
             } else {
-                // 2. 更新指定站點標籤圖示 (高鐵、火車、機場)
                 const subNameMap = { hsr: '高鐵', train: '火車', airport: '機場' };
                 label.innerText = `${iconMap[transport]} 指定${subNameMap[transport]}站`;
                 
@@ -455,7 +427,7 @@ const mrtLinesTaipei = {
                 return { data: JSON.parse(result.candidates[0].content.parts[0].text) };
             } catch (e) { return { error: "資料不穩定，請再試一次。" }; }
         }
-        // --- 修正後的卡片渲染：右上角標籤固定為 LIKE ---
+
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
             const stack = document.getElementById('card-stack'); 
@@ -508,7 +480,7 @@ const mrtLinesTaipei = {
         // --- 核心晉級與蓋章滑動功能 ---
         function initSwipe(card, wrapper, res) {
     let startX = 0, startY = 0, currentX = 0, currentY = 0;
-    let isScrolling = false; // 是否正在上下捲動
+    let isScrolling = false;
 
     card.addEventListener('touchstart', e => {
         startX = e.touches[0].clientX;
@@ -520,20 +492,14 @@ const mrtLinesTaipei = {
     card.addEventListener('touchmove', e => {
         currentX = e.touches[0].clientX - startX;
         currentY = e.touches[0].clientY - startY;
-
-        // 偵測：如果垂直位移大於水平位移，判定為「正在捲動頁面」，不執行左右滑動
         if (!isScrolling && Math.abs(currentY) > Math.abs(currentX)) {
             isScrolling = true;
         }
 
         if (!isScrolling) {
-            // 只有在非捲動狀態下，才阻擋預設行為並執行左右滑動
             if (e.cancelable) e.preventDefault(); 
-            
             let rotation = currentX / 15;
             card.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
-            
-            // 顯示 LIKE / NOPE 標籤
             if (currentX > 50) {
                 card.querySelector('.label-like').style.opacity = Math.min(currentX/150, 1);
                 card.querySelector('.label-nope').style.opacity = 0;
@@ -545,7 +511,7 @@ const mrtLinesTaipei = {
     }, { passive: false });
 
     card.addEventListener('touchend', () => {
-        if (isScrolling) return; // 如果剛才是捲動頁面，則不處理
+        if (isScrolling) return; 
 
         card.style.transition = '0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
         if (currentX > 120) { // 右滑 (LIKE)
@@ -573,19 +539,14 @@ const mrtLinesTaipei = {
     });
 }
 
-        // --- 結束檢查邏輯：確保 UI 先隱藏，按鈕不殘留，再跳 Alert ---
-        // --- 修正後的結束檢查：顯示卡片系統內建訊息與確認按鈕 ---
         function checkStackEnd(wrapper) {
             setTimeout(() => {
                 wrapper.remove();
                 const remaining = document.querySelectorAll('.swipe-card-wrapper');
                 if (remaining.length === 0) {
                     if (keptRestaurants.length === 0) {
-                        // 1. 隱藏底下的「← 返回修改」按鈕
                         const closeBtn = document.querySelector('.close-swiper');
                         if (closeBtn) closeBtn.style.display = 'none';
-
-                        // 2. 在卡片區域注入自定義的訊息 UI
                         const stack = document.getElementById('card-stack');
                         stack.innerHTML = `
                             <div style="background: rgba(30,30,30,0.9); border: 1px solid var(--glass-border); padding: 30px; border-radius: 24px; text-align: center; margin-top: 100px; width: 85%; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
@@ -599,7 +560,6 @@ const mrtLinesTaipei = {
                             </div>
                         `;
                     } else {
-                        // 帶著喜歡的店家進入下一輪
                         const nextRoundData = [...keptRestaurants];
                         keptRestaurants = []; 
                         renderCards(nextRoundData);
