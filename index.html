@@ -396,52 +396,37 @@ const mrtLinesTaipei = {
         }
 
         async function getAiRecommendation(cfg) {
-    // 建議將模型更換為 gemini-1.5-flash 以確保搜尋工具的穩定性
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfg.apiKey}`;
 
-    const prompt = `你現在是美食數據專家。
-    【重要指令】：請「先使用 Google 搜尋」確認位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家真實資訊。
-    
-    【數據正確性要求】：
-    1. 必須是真實存在且「目前仍在營業」的店家。
-    2. name：必須與 Google Maps 上的名稱 100% 一致。
-    3. 評分與評論：請提供最新的 Google Maps 評分 (rating) 與評論總數 (review_count)。
-    4. 找齊 6 家店，並確保它們都在 ${cfg.locationLimit} 的地理範圍內。
-    
-    【輸出規範】：
-    僅輸出純 JSON 陣列。欄位：name, rating, review_count, price, signature, opening_hours, review_summary, reason, map_query。不要解釋文字。`;
+            const prompt = `你現在是美食數據專家。請檢索位於【${cfg.locationLimit}】、符合「${cfg.food}」類別、預算「${cfg.budget}」的店家。
+            【數據正確性要求】：
+            1. 官方店名：name 必須與 Google Maps 標題 100% 一致。禁止自行增刪分店識別字。
+            2. 數量要求：找齊 6 家真實存在的店。
+            3. 地理邊界：店家必須在 ${cfg.locationLimit} 實際物理 1 公里內，嚴禁 2 公里外的偏移。
+            4. 評分數據：請提供真實評分(rating)與【評論總數(review_count)】。
+            5. 營業時間 (opening_hours)：提供真實營業時段。
+            6. 真實評論摘要 (review_summary)：擷取 Google Maps 真實顧客的反饋。
+            
+            【過濾條件】：
+            ${cfg.isHidden ? "- 優先挑選高分但評論數較少、或是巷弄內的私房名單。" : "- 挑選熱門名店。"}
+            ${cfg.isOpenOnly ? "- 僅限目前營業中的店家。" : ""}
+            
+            【輸出規範】：僅輸出純 JSON 陣列。欄位：name, rating, review_count, price, signature, opening_hours, review_summary, reason, map_query。不要解釋文字。`;
 
-    try {
-        const response = await fetch(url, { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json" }, 
-            body: JSON.stringify({ 
-                contents: [{ parts: [{ text: prompt }] }],
-                // --- 新增：開啟 Google Search 搜尋工具 ---
-                tools: [{
-                    google_search_retrieval: {} 
-                }],
-                generationConfig: { 
-                    response_mime_type: "application/json", 
-                    temperature: 0.2 // 調低溫度以增加準確度
-                }
-            }) 
-        });
-        
-        const result = await response.json();
-        
-        if (result.error) return { error: `API 請求失敗: ${result.error.message}` };
-        
-        // 解析 AI 回傳的 JSON 字串
-        const aiText = result.candidates[0].content.parts[0].text;
-        return { data: JSON.parse(aiText) };
-        
-    } catch (e) { 
-        console.error("解析失敗內容:", e);
-        return { error: "搜尋工具回傳資料格式有誤，請再試一次。" }; 
-    }
-}
-
+            try {
+                const response = await fetch(url, { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ 
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { response_mime_type: "application/json", temperature: 0.2 }
+                    }) 
+                });
+                const result = await response.json();
+                if (result.error) return { error: `API 請求失敗: ${result.error.message}` };
+                return { data: JSON.parse(result.candidates[0].content.parts[0].text) };
+            } catch (e) { return { error: "資料不穩定，請再試一次。" }; }
+        }
         function renderCards(restaurants) {
             document.getElementById('main-ui').classList.add('blur-mode');
             const stack = document.getElementById('card-stack'); 
